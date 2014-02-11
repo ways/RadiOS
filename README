@@ -1,3 +1,192 @@
 RadiOP
 ------
 
+== Overview ==
+
+A basic internet radio, made to look good and make you want to touch it.
+
+== Inspiration ==
+* http://www.faxswitch.com/images/Switchboard.jpg
+* http://www.vator.tv/images/attachments/201008094017Switchboard_metaphor.jpg
+* http://upload.wikimedia.org/wikipedia/commons/1/16/Denver_Fire_Museum_Switchboard.JPG
+* http://nickmomrik.files.wordpress.com/2011/01/switchboard.jpg
+* http://thumb9.shutterstock.com/display_pic_with_logo/378340/378340,1245355548,2/stock-photo-close-up-of-a-vintage-telephone-switchboard-it-was-used-in-around-now-many-antiques-like-32315032.jpg
+
+== UI ==
+
+=== Hardware ===
+
+* Wooden box with metal points:
+
+    ______
+  /      /|
+ +------+ |
+ | o  o | |
+ | o  o | |
+ | o  o | |
+ | o  o | |
+ | o  o | |
+ | o  o | |
+ | o  o | |
+ | o  o | |
+ | o  o |/
+ +------+
+
+* Connection points: https://www.dropbox.com/s/ik8a4tps78zce43/IMG_20140207_193525.jpg
+- The smallest disk is a neodymium magnet D=8-10mm. Surface area for gluing it to board might be a small compared to the power of the magnet (might get pulled out). Still think this one is the best option. Smooth surface, nice look, any metal wire can be used as a cable.
+- The copper-like screw is not magnetic and cannot be used.
+- The other ones are steel, and offer very good attachment to board. Will require magnetic cable-ends.
+
+* Cable with connectors in each end:
+
+ O-    ------------0  
+   \__/
+
+Cable-connector alternatives: https://www.dropbox.com/s/4qmqvfmieboolbc/IMG_20140207_193611.jpg
+- White with collar for cable
+- Steel with hole for cable
+- Both holes are small (3-4mm). Might have to get clever to get the cable through.
+
+
+* Rpi
+* Wifi - http://www.newark.com/element14/wipi/module-wifi-usb-for-raspberry/dp/07W8938
+* SDcard
+* wires
+* Speaker with amp, i.e. Music Angel.
+* PSU - Need dimensions if internal
+* Usb hub/splitter/something to power both from same adapter - Need dimensions
+
+=== User adaptable ===
+
+* User programs wifi info + channel selection via text file or webUI.
+* User writes channel names on front of box using chalk.
+
+=== Inside ===
+
+ +----------------------+
+ |                      |
+ D--|    +------+       |
+ |  |===#| Rpi  |       |
+ D--|    |      |       |
+ |  |    |      |       |
+ D--|   =|      |       |
+ |  |   |+------+       |
+ D--|   |      \        |
+ |  |   |       X=======|=======\
+ D--|   |       |       |       \\
+ |  |   |       |       |       ||
+ D--|   |+---------+    |       ||
+ |  |   =| Spkr_   |    |       ||
+ D--|    |  /   \  |    |       ||
+ |  |    | |  O  | |    |       ||
+ D--|    |  \   /  |    |       ||
+ |       +---------+    |       ||
+ D                      |       ||
+ |                      |       ||
+ +----------------------+       ||
+                                ||  
+   _____         ___            ||     
+  /      \      |   |           ||
+ |  O  O  |  C==|   |==========//
+  \______/      |___|
+
+== Behavior ==
+
+* User configures settings, and plugs in device
+* When powered up, device will say "Ready", alternatively "No configuration found. Powering down." or "Network not available".
+* User attaches magnet X to a channel, magnet Y to a volume.
+* Device starts streaming channel at volume.
+* If either magnet is removed, device will be muted. If muted for ~10 seconds, streaming will stop.
+
+* We have two dead ports for "off".
+
+== Software ==
+
+=== OS ===
+# Simple solution: script to handle input, scipt to play music with selections made
+# More advanced: same as above, but with mpd for streaming
+# Advanced: same as first, but with http://www.woutervanwijk.nl/pimusicbox/ as backend. Will also allow spotify, local files, remote files, control via web, control via phone, lastfm, etc. Will be harder to integrate.
+
+=== One-wire-two-selections pseudo code ===
+* We have two rows of connections, #1 and #2.
+* Set row #1 to input, row #2 to high.
+* We will now sense input on A.
+* Set row #2 to input, row #1 to high.
+* We will now sense input on E.
+
+ #1  #2
+
+ A -  D
+ B  \-E
+ C    F
+
+== Material options ==
+
+# Smooth wood with blackboard front, shiny bronze metal points.
+# Old driftwood box, large jacks, fabric cables.
+# Transparent.
+# Deluxe model in kitchen bench material. CNC to hollow out.
+
+== Open questions ==
+
+=== Yes, let's try that ===
+
+* Should we put magnets/metal between points, to allow magnet to slide to the next point.
+* Should the magnets be in the box, and cable simply be ferromagnetic? Allows to switch cable more easily.
+* Line in/out?
+* Internal PSU.
+
+=== Perhaps ===
+
+* Battery?
+* Room to add several music angels? Different amp?
+* Set wifi to ad-hoc if no wifi? Allows ad-hoc network to stream music or configure system without access to AP.
+* Should "voice" be used at all? Boot can be announced with a tone instead, or not at all. Announce channel name?
+* Should the magnets be jacks to look more like a switchboard?
+* Should we have some way of knowing which side is what? A small symbol somewhere to show that this is the "Volume" side?
+
+=== Probably not ===
+
+* Instead of having dead ports, should we have two ports for alternative stuff? Like "touch one of them with the magnet to announce time", now and every hour. Or touch one to shut down.
+** Can we change this in software later or does it require different wiring?
+** We would need to reserve ports for this, but function can be decided later. In other words, if we find that we have too many channels and volumes, we can repurpose them.
+* Do we need more ports? For more channels, more volume settings.
+* Should we have less ports for aesthetics?
+* LEDs.
+* Radio speaks in clips from movies, songs. E.g. "What...we have here...is failure..to communicate" (no connection), "Gooood morning, vietnam" (on)
+** Perhaps, if we can find several good ones, and use a random one when needed.
+
+=== Sketches for added lights ===
+
+* Bulbs popping up on top
+    _    _
+  _|~|__|~|_
+ /_________/|
+ |         ||
+ | O     O ||
+
+* Grill at bottom
+
+ |   _   _   _   _   |
+ |  / | | | | | | \  |
+ | |  | | | | | |  | |
+ |  \_| |_| |_| |_/  |
+ |___________________|
+
+* Small holes with leds inside
+
+  __________
+ /_________/ |
+ | . . . . | |
+ |         | |
+ |  O   O  | |
+
+* Leds pointing downwards
+
+ | o  o | |
+ | o  o | |
+ | o  o |/
+ +------+
+  /|\ /|\
+
+

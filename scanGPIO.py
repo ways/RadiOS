@@ -8,8 +8,12 @@
 # * stop any music playing
 #
 # * feel input
-#  * check if we're playing that
-#  * if no: stop, play that
+#  * muted for > 30 sec -> stop
+#  * no input -> mute
+#  * check if we're playing what's selected
+#   * if no -> play selected
+#  * check if volume's right
+#   * if no -> set volume
 #
 # Our input looks like this:
 #
@@ -24,31 +28,84 @@
 # 8       | 30
 
 from mpd import MPDClient
-from time import sleep
+import time, syslog
+import RPi.GPIO as GPIO
 
-client = MPDClient() 
-ioMapVolume = None
-ioMapChannels = None
-verbose = 3
+client = MPDClient () 
+ioList = None        # Map GPIO to function
+
+channelNames = None  # User channel titles
+channelUrls = None   # User channel urls
+
+nowPlaying = False   # Status variables
+nowVolume = False
+nowTimestamp = 1
+prevPlaying = False
+prevVolume = False
+prevTimestamp = 0
+
+ioChannel = None
+ioVolume = None
+ioUpdated = None
+
+verbose = 3          # Development variables
 test = True
 
+
+def WriteLog (msg, error = False):
+  severity = syslog.LOG_INFO
+  if error:
+    severity = syslog.LOG_ERR
+  
+  syslog.syslog (severity, msg)
 
 def ConnectMPD (c):
   c.timeout = 10
   c.idletimeout = None
-  c.connect("localhost", 6600)
-  if verbose:
-    print(c.mpd_version) 
+  c.connect ("localhost", 6600)
+
+  WriteLog ("Connected to MPD version " + c.mpd_version)
 
 
 def StopMPD (c):
+  WriteLog("Stopping MPD")
+  c.clear ()
+
+
+def MuteMPD (c):
+  WriteLog ("Muting MPD.")
+  c.setvol (0)
+
+
+def PlayMPD (c, volume, url):
+  WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
+  c.add (url)
+  c.play ()
+  c.setvol (volume)
+
+def PlayStream (ioVolume, ioChannel):
+  global nowPlaying, nowVolume, nowTimestamp, prevPlaying, prevVolume, prevTimestamp
+
+  prevPlaying = nowPlaying
+  prevVolume = nowVolume
+  prevTimestamp = nowTimestamp
+
+  nowPlaying = int (ioChannel[0])
+  nowVolume = int (ioVolume[0])
+  nowTimestamp = time.time ()
+
+  WriteLog ("Will play volume " + str (nowVolume) + " channel " + str (nowPlaying) + " with name " + \
+      channelNames[nowPlaying] + " at time " + str (nowTimestamp))
+
+  PlayMPD (client, int(ioVolume[0]), channelUrls[ int (ioChannel[0]) ])
+
+def VolumeMPD (c, vol):
   if verbose:
-    print "Stopping mpd."
-  c.setvol(0)
-  c.clear()
+    print "Setting volume to " + str (vol) + "."
+  c.setvol (int (vol))
 
 
-def PopulateTables (vol, chan):   # Set up mapping from IO to function
+def PopulateTables ():   # Set up mapping from IO to function
   # gpio | function
   # 8    | volume 100
   # 9    | volume 90
@@ -69,44 +126,103 @@ def PopulateTables (vol, chan):   # Set up mapping from IO to function
   # 10   | channel 7
   # 11   | channel 8
 
-  vol = dict(
-    8: "100",
-    9: "90"
-    )
+  ioList = [
+    70, #0
+    3,  #1
+    60, #2
+    50, #3
+    4,  #4
+    5,
+    6,
+    80, #7
+    100,
+    90,
+    7,  #10
+    8,
+    40,
+    30,
+    0,
+    1,
+    2   #16
+  ]
 
-  chan = dict(
-    15: "http://vprbbc.streamguys.net:8000/vprbbc24.mp3",
-    16: "NrkP1"
-  )
+#  if verbose:
+#    print str( ioList )
 
-  if verbose:
-    print str( vol )
-    print str( chan )
+  return ioList
 
-
-def Play (ioVolume, ioChannel):   # Start playing based on IO table
-  PlayMPD (vol, chan)
-  if verbose:
-    print str( t )
+def Compare ():   # Check if we're playing what we're supposed to
+  return ( nowPlaying == int (ioChannel[0]) and nowVolume == int (ioVolume[0]) )
 
 
-def Compare (vol, chan):   # Check if we're playing what we're supposed to
-  now = None   # What we're playing now
+def ScanIO (ioList):
+  ioVol = list ()
+  ioChan = list ()
 
-  if verbose:
-    print "No need to change"
-    return True
+  for pin, func in enumerate (ioList):
+    if pin < 10:                         # Prepare channels for input
+      GPIO.setup (pin, GPIO.IN)
+    else:
+      GPIO.setup (pin, GPIO.OUT)         # Prepare volumes for output
 
+  for pin, func in enumerate (ioList):   # Look for HIGHs
+    if pin < 10 and GPIO.input(pin):
+      ioVol.append (func)
+      break
+
+  # Now we turn it around
+  for pin, func in enumerate (ioList):   
+    if pin < 10:                         # Prepare channels for output
+      GPIO.setup (pin, GPIO.OUT)
+    else:        
+      GPIO.setup (pin, GPIO.IN)          # Prepare volumes for input
+
+  for pin, func in enumerate (ioList): # Look for HIGHs
+    if pin > 10 and GPIO.input(pin):
+      ioChan.append (func)
+      break
+
+  if 0 == len (ioVol):
+    ioVol.append (0)
+
+  if 0 == len (ioChan):
+    ioChan.append (0)
+
+  return (ioVol, ioChan)
+
+def UserChannels ():
+  channelnames = list ()
+  channelurls = list ()
+
+  channelnames.append ('Groove Salad')
+  channelurls.append ('http://ice.somafm.com/groovesalad')
+  channelnames.append ('Secret Agent')
+  channelurls.append ('http://sfstream1.somafm.com:9010')
+  channelnames.append ('Mission Control')
+  channelurls.append ('http://sfstream1.somafm.com:2020')
+  channelnames.append ('NRK P3')
+  channelurls.append ('http://lyd.nrk.no/nrk_radio_p3_mp3_h')
+  channelnames.append ('NRK Alltid Nyheter')
+  channelurls.append ('http://lyd.nrk.no/nrk_radio_alltid_nyheter_mp3_h')
+  channelnames.append ('NRK MP3')
+  channelurls.append ('http://lyd.nrk.no/nrk_radio_mp3_mp3_h')
+
+  return channelnames, channelurls
 
 # Main
 
+channelNames, channelUrls = UserChannels ()
 ConnectMPD (client)
-StopMPD (client)
+#StopMPD (client)
 
-PopulateTables (ioMapVolume, ioMapChannels)
+ioList = PopulateTables ()
+
+GPIO.setmode (GPIO.BCM)
+GPIO.setwarnings (False)
 
 while True:
-  if not Compare ( ScanIO (ioMapVolume, ioMapChannels)):
-    Play(ioMapVolume, ioMapChannels)
+  ioVolume, ioChannel = ScanIO (ioList)
+  if not Compare ():
+    PlayStream (ioVolume, ioChannel)
 
-  sleep 2
+  time.sleep (5)
