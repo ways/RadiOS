@@ -6,8 +6,7 @@
 # Pseudo code:
 # * load user configs
 # * feel input
-#  * muted for > x sec -> stop
-#  * no input -> mute
+#  * no input -> stop
 #  * check if we're playing what's selected
 #   * if no -> play selected
 #  * check if volume's right
@@ -22,13 +21,11 @@
 # 4       | 70
 # 5       | 60
 # 6       | 50
-# 7       | 40
 
-from mpd import MPDClient
-import time, syslog
+import time, syslog, mpd
 import RPi.GPIO as GPIO
 
-client = MPDClient () # Connection to mpd
+client = mpd.MPDClient () # Connection to mpd
 ioList = None        # Map GPIO to function
 channelNames = None  # User channel titles
 channelUrls = None   # User channel urls
@@ -69,24 +66,30 @@ def StopMPD (c):
 
 def MuteMPD (c):
   WriteLog ("Muting MPD.")
-  VolumeMPD (c, 0)
+  SetVolumeMPD (c, 0)
 
 
-def VolumeMPD (c, vol):
+def SetVolumeMPD (c, vol):
   WriteLog ("Setting volume to " + str (vol) + ".")
   c.setvol (int (vol))
 
 
 def PlayMPD (c, volume, url):
+  step = 3
+
   try:
-#    StopMPD (c)
+    StopMPD (c)
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
     c.add (url)
+    SetVolumeMPD (c, 0)
     c.play ()
-    c.crop ()
-    VolumeMPD (c, volume)
+
+    for v in range (step, volume + step, step):
+      SetVolumeMPD (c, v)
+      time.sleep (.1)
+
   except mpd.ConnectionError():
-    WriteLog ("Error playing with MPD", True)
+    WriteLog ("PlayMPD: Error talking to MPD.", True)
     return False
 
   return True
@@ -111,57 +114,6 @@ def PlayStream (ioVolume, ioChannel):
 
 
 def PopulateTables ():   # Set up mapping from IO to function
-  # bcn  | function
-  # -
-  # 8    | volume 100
-  # 9    | volume 90
-  # 7    | volume 80
-  # -
-  # 0    | volume 70
-  # 2    | volume 60
-  # 3    | volume 50
-  # -
-  # 12   | volume 40
-  # 13	 | volume 30
-  # 14   | mute / off
-  # -
-
-  # -
-  # -
-  # -
-  # 15   | channel 1
-  # 16   | channel 2
-  # 1    | channel 3
-  # -
-  # 4    | channel 4
-  # 5    | channel 5
-  # -
-  # 6    | channel 6
-  # 10   | channel 7
-  # 11   | channel 8
-
-#  ioList = [
-#    -1, #0
-#    70, #0
-#    3,  #1
-#    60, #2
-#    50, #3
-#    4,  #4
-#    5,
-#    6,
-#    80, #7
-#    100,
-#    90,
-#    7,  #10
-#    8,
-#    40,
-#    30,
-#    0,
-#    1,
-#    2   #16
-#  ]
-
-
 # BCN/GPIO number | function
 # 2  | volume 100
 # 3  | volume 90
@@ -187,30 +139,30 @@ def PopulateTables ():   # Set up mapping from IO to function
     -1,  #1
     -1, #2 100, This pin gives false positives
     -1,  #3 90, This pin gives false positives
-    80,  #4
+    100,  #4
     -1,  #5
     -1,  #6
-    9,   #7
+    40,  #7
     8,   #8
-    30,  #9
-    40, #10
+    50,  #9
+    70, #10
     1,  #11
     -1, #12
     -1, #13
     2,  #14
     3,  #15
     -1, #16
-    70, #17
+    90, #17
     4,  #18
     -1, #19
     -1, #20
     -1,
-    50, #22
+    60, #22
     5,  #23
     6,  #24
     7,  #25
     -1,
-    60  #27
+    80  #27
   ]
 
   if verbose:
@@ -311,10 +263,10 @@ def UserChannels ():
   channelurls.append ('http://ice.somafm.com/groovesalad')
   channelnames.append ('Secret Agent')
   channelurls.append ('http://sfstream1.somafm.com:9010')
-  channelnames.append ('Mission Control')
-  channelurls.append ('http://sfstream1.somafm.com:2020')
   channelnames.append ('NRK P3')
   channelurls.append ('http://lyd.nrk.no/nrk_radio_p3_mp3_h')
+  channelnames.append ('Mission Control')
+  channelurls.append ('http://sfstream1.somafm.com:2020')
   channelnames.append ('NRK Alltid Nyheter')
   channelurls.append ('http://lyd.nrk.no/nrk_radio_alltid_nyheter_mp3_h')
   channelnames.append ('NRK MP3')
@@ -342,7 +294,7 @@ try:
     time.sleep (5)
 
 except KeyboardInterrupt:
-  print "Exiting..."
+  print "Shutting down cleanly ... (Ctrl + C)"
 
 finally:  
     GPIO.cleanup()
