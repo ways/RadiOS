@@ -1,7 +1,22 @@
 #!/usr/bin/env python
 
+# Copyright 2014 Lars Falk-Petersen
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
 # Main part of RadiOP
-# Requires python-mpd
+# Requires apt-get install mpd python-mpd espeak
 #
 # Pseudo code:
 # * load user configs
@@ -22,7 +37,7 @@
 # 5       | 60
 # 6       | 50
 
-import time, syslog, mpd
+import time, syslog, mpd, ConfigParser, io, sys, os
 import RPi.GPIO as GPIO
 
 client = mpd.MPDClient () # Connection to mpd
@@ -37,8 +52,39 @@ prevVolume = 0
 prevTimestamp = 0
 ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
-
+useVoice = True     # Announce channels
+configFile = "/boot/config/config.txt"
 verbose = True       # Development variables
+
+
+def ParseConfig ():
+  section = 'Channels'
+  channelnames = list ()
+  channelurls = list ()
+
+  try:
+    config = ConfigParser.RawConfigParser (allow_no_value=True)
+    config.read (configFile)
+
+    for i in range (1, 9):
+      channelnames.append (config.get (section, 'channel' + str (i) + '_name'))
+      channelurls.append (config.get (section, 'channel' + str (i) + '_url'))
+
+  except ConfigParser.NoOptionError, e:
+    WriteLog ("Error in config file " + configFile + ". Error: " + str (e), True)
+
+  except ConfigParser.Error:
+    print "Error reading config file " + configFile
+    WriteLog ("Error reading config file " + configFile, True)
+    sys.exit (1)
+
+  if verbose:
+    print channelnames
+    print channelurls
+  else:
+    WriteLog ( "Read channels from config: " + str (channelnames))
+
+  return channelnames, channelurls
 
 def WriteLog (msg, error = False):
   severity = syslog.LOG_INFO
@@ -57,6 +103,7 @@ def ConnectMPD (c):
     return False
 
   WriteLog ("Connected to MPD version " + c.mpd_version)
+  Speak ("I am ready")
   return True
 
 def StopMPD (c):
@@ -75,21 +122,24 @@ def SetVolumeMPD (c, vol):
 
 
 def PlayMPD (c, volume, url):
-  step = 3
+  start = 20
+  step = 5
 
   try:
-    StopMPD (c)
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
     c.add (url)
     SetVolumeMPD (c, 0)
     c.play ()
 
-    for v in range (step, volume + step, step):
+    for v in range (start, volume + step, step):
       SetVolumeMPD (c, v)
       time.sleep (.1)
 
-  except mpd.ConnectionError():
-    WriteLog ("PlayMPD: Error talking to MPD.", True)
+  except mpd.CommandError, e:
+    WriteLog ("PlayMPD: Error commanding mpd: " + str(e))
+    return False
+  except mpd.ConnectionError, e:
+    WriteLog ("PlayMPD: Error connecting to MPD:" + str (e), True)
     return False
 
   return True
@@ -110,7 +160,16 @@ def PlayStream (ioVolume, ioChannel):
     " (named " + channelNames[nowPlaying] + \
     ") at volume " + str (nowVolume) + "."
     )
+
+  StopMPD (client)
+  Speak ("Playing " + channelNames[nowPlaying])
   PlayMPD (client, nowVolume, channelUrls[nowPlaying])
+
+
+def Speak (msg):
+  if useVoice:
+    WriteLog ('Saying . o O (' + msg + ')')
+    os.system("espeak --stdout '" + msg + "' -a 300 -s 130 | aplay")
 
 
 def PopulateTables ():   # Set up mapping from IO to function
@@ -172,20 +231,13 @@ def PopulateTables ():   # Set up mapping from IO to function
 
 
 def Compare ():      # True if we do not need to start something
-  global nowPlaying, nowVolume
-
-#  if -1 == int (ioChannel[0]) \
-#    and (time.time () -15 < nowTimestamp) \
-#    and 0 < nowVolume:                 # Mute if cable is unplugged
-#    WriteLog ("Muting MPD due to channel " + str (ioChannel[0]) + \
-#      " and nowTime " + str (nowTimestamp) + " and nowvol " + str (nowVolume))
-#    nowVolume = 0
-#    MuteMPD (client)
-#    return True
+  global nowPlaying
 
   if -1 == int (ioChannel[0]) \
     and nowPlaying:                    # Stop if unplugged for more that a few seconds
-    WriteLog ("Stopping MPD due to nowPlaying: " + str (nowPlaying) )
+    WriteLog ("Stopping MPD due to nowPlaying " + \
+      str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
+
     nowPlaying = False
     StopMPD (client)
     return True
@@ -216,8 +268,8 @@ def ScanIO (ioList):
 
     if func < 10 and GPIO.input(pin):
       ioChan.append (func)
-      if verbose:
-        print "Found high pin", pin, "func", func, "while looking for channels"
+      #if verbose:
+      #  print "Found high pin", pin, "func", func, "while looking for channels"
 
   if 0 == len (ioChan):
     ioChan.append (-1)
@@ -244,8 +296,8 @@ def ScanIO (ioList):
 
     if func > 10 and GPIO.input(pin):
       ioVol.append (func)
-      if verbose:
-        print "Found high pin", pin, "func", func, "while looking for volumes"
+      #if verbose:
+      #  print "Found high pin", pin, "func", func, "while looking for volumes"
 
   if 0 == len (ioVol):
     ioVol.append (0)
@@ -255,28 +307,8 @@ def ScanIO (ioList):
   return (ioVol, ioChan)
 
 
-def UserChannels ():
-  channelnames = list ()
-  channelurls = list ()
-
-  channelnames.append ('Groove Salad')
-  channelurls.append ('http://ice.somafm.com/groovesalad')
-  channelnames.append ('Secret Agent')
-  channelurls.append ('http://sfstream1.somafm.com:9010')
-  channelnames.append ('NRK P3')
-  channelurls.append ('http://lyd.nrk.no/nrk_radio_p3_mp3_h')
-  channelnames.append ('Mission Control')
-  channelurls.append ('http://sfstream1.somafm.com:2020')
-  channelnames.append ('NRK Alltid Nyheter')
-  channelurls.append ('http://lyd.nrk.no/nrk_radio_alltid_nyheter_mp3_h')
-  channelnames.append ('NRK MP3')
-  channelurls.append ('http://lyd.nrk.no/nrk_radio_mp3_mp3_h')
-
-  return channelnames, channelurls
-
 # Main
-
-channelNames, channelUrls = UserChannels ()
+channelNames, channelUrls = ParseConfig ()
 ConnectMPD (client)
 ioList = PopulateTables ()
 
@@ -285,7 +317,6 @@ GPIO.setmode (GPIO.BCM) #Use GPIO numbers
 GPIO.setwarnings (False)
 
 try:
-
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
     if not Compare ():
