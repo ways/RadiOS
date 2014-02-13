@@ -156,14 +156,19 @@ def PlayStream (ioVolume, ioChannel):
   nowVolume = int (ioVolume[0])
   nowTimestamp = time.time ()
 
+  StopMPD (client)
+
+  if len (channelNames) <= nowPlaying:   # We don't have that many channels
+    Speak ("That channel does not exist, check your configuration.")
+    return False
+    
   WriteLog ("Will play channel " + str (nowPlaying) + \
     " (named " + channelNames[nowPlaying] + \
     ") at volume " + str (nowVolume) + "."
     )
 
-  StopMPD (client)
   Speak ("Playing " + channelNames[nowPlaying])
-  PlayMPD (client, nowVolume, channelUrls[nowPlaying])
+  return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
 def Speak (msg):
