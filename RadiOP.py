@@ -16,30 +16,34 @@
 
 
 # Main part of RadiOP
-# Requires apt-get install mpd python-mpd espeak
+# Requires apt-get install python-mpd python-rpi.gpio
+# Can use espeak mpd
 #
 # Pseudo code:
 # * load user configs
 # * feel input
-#  * no input -> stop
+#  * no input -> stop music
 #  * check if we're playing what's selected
+#   * check if volume's right
+#    * if no -> set volume
 #   * if no -> play selected
-#  * check if volume's right
-#   * if no -> set volume
+#   * if no network -> warn user
+#   * if no channels set -> warn user
 #
-# Our physical input looks like this:
+# Our physical input looks something like this:
 #
 # channel | volume
 # 1       | 100
-# 2       | 90
-# 3       | 80
-# 4       | 70
-# 5       | 60
-# 6       | 50
+# 2       | 95
+# 3       | 90
+# 4       | 85
+# 5       | 80
+# 6       | 75
 
 import time, syslog, mpd, ConfigParser, io, sys, os
 import RPi.GPIO as GPIO
 
+mpdhost = 'localhost'
 client = mpd.MPDClient () # Connection to mpd
 ioList = None        # Map GPIO to function
 channelNames = None  # User channel titles
@@ -52,8 +56,11 @@ prevVolume = 0
 prevTimestamp = 0
 ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
-useVoice = True     # Announce channels
+speakTime = False
 configFile = "/boot/config/config.txt"
+
+                     # User configurable
+useVoice = False     # Announce channels
 verbose = True       # Development variables
 
 
@@ -71,7 +78,8 @@ def ParseConfig ():
       channelurls.append (config.get (section, 'channel' + str (i) + '_url'))
 
   except ConfigParser.NoOptionError, e:
-    WriteLog ("Error in config file " + configFile + ". Error: " + str (e), True)
+    WriteLog ("Error in config file " + configFile + ". Error: " + str (e), \
+      True)
 
   except ConfigParser.Error:
     print "Error reading config file " + configFile
@@ -97,18 +105,24 @@ def ConnectMPD (c):
   c.timeout = 10
   c.idletimeout = None
   try:
-    c.connect ("localhost", 6600)
+    c.connect (mpdhost, 6600)
   except mpd.ConnectionError():
     WriteLog ("Error connecting to MPD", True)
     return False
 
   WriteLog ("Connected to MPD version " + c.mpd_version)
-  Speak ("I am ready")
+  SetVolumeMPD (client, 50)
+  Speak ("Hello", c)
   return True
 
 def StopMPD (c):
   WriteLog("Stopping MPD")
-  c.clear ()
+  try:
+    c.clear ()
+    return True
+  except mpd.ConnectionError():
+    WriteLog("MPD error")
+    return False
 
 
 def MuteMPD (c):
@@ -118,7 +132,11 @@ def MuteMPD (c):
 
 def SetVolumeMPD (c, vol):
   WriteLog ("Setting volume to " + str (vol) + ".")
-  c.setvol (int (vol))
+  try:
+    c.setvol (int (vol))
+  except mpd.ConnectionError():
+    WriteLog("MPD error")
+    return False
 
 
 def PlayMPD (c, volume, url):
@@ -145,8 +163,9 @@ def PlayMPD (c, volume, url):
   return True
 
 
-def PlayStream (ioVolume, ioChannel):
-  global nowPlaying, nowVolume, nowTimestamp, prevPlaying, prevVolume, prevTimestamp
+def PlayStream (ioVolume, ioChannel, client):
+  global nowPlaying, nowVolume, nowTimestamp, prevPlaying, prevVolume, \
+    prevTimestamp
 
   prevPlaying = nowPlaying
   prevVolume = nowVolume
@@ -159,7 +178,7 @@ def PlayStream (ioVolume, ioChannel):
   StopMPD (client)
 
   if len (channelNames) <= nowPlaying:   # We don't have that many channels
-    Speak ("That channel does not exist, check your configuration.")
+    Speak ("Channel is not configured.", client)
     return False
     
   WriteLog ("Will play channel " + str (nowPlaying) + \
@@ -167,14 +186,15 @@ def PlayStream (ioVolume, ioChannel):
     ") at volume " + str (nowVolume) + "."
     )
 
-  Speak ("Playing " + channelNames[nowPlaying])
+  if useVoice:
+    Speak ("Playing " + channelNames[nowPlaying], client)
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
-def Speak (msg):
-  if useVoice:
-    WriteLog ('Saying . o O (' + msg + ')')
-    os.system("espeak --stdout '" + msg + "' -a 300 -s 130 | aplay")
+def Speak (msg, client, volume=50):
+  WriteLog ('Saying . o O (' + msg + ')')
+  SetVolumeMPD (client, volume)
+  os.system("espeak --stdout '" + msg + "' -a 300 -s 130 | aplay")
 
 
 def PopulateTables ():   # Set up mapping from IO to function
@@ -206,10 +226,10 @@ def PopulateTables ():   # Set up mapping from IO to function
     100,  #4
     -1,  #5
     -1,  #6
-    40,  #7
+    95,  #7
     8,   #8
-    50,  #9
-    70, #10
+    85,  #9
+     5, #10
     1,  #11
     -1, #12
     -1, #13
@@ -221,7 +241,7 @@ def PopulateTables ():   # Set up mapping from IO to function
     -1, #19
     -1, #20
     -1,
-    60, #22
+    65, #22
     5,  #23
     6,  #24
     7,  #25
@@ -235,11 +255,14 @@ def PopulateTables ():   # Set up mapping from IO to function
   return ioList
 
 
-def Compare ():      # True if we do not need to start something
-  global nowPlaying
+def Compare (client):      # True if we do not need to start something
+  global nowPlaying, speakTime
+
+#  if verbose and 2 < len (str (nowPlaying)):
+#    WriteLog("nowPlaying: ", nowPlaying)
 
   if -1 == int (ioChannel[0]) \
-    and nowPlaying:                    # Stop if unplugged for more that a few seconds
+    and nowPlaying:          # Stop if unplugged for more that a few seconds
     WriteLog ("Stopping MPD due to nowPlaying " + \
       str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
 
@@ -247,7 +270,17 @@ def Compare ():      # True if we do not need to start something
     StopMPD (client)
     return True
 
+  elif -4 == int (ioChannel[0]): #Hourly speakTime
+    if not speakTime:
+      WriteLog ("Activating speakTime")
+      Speak ("Time is now " + time.strftime("%H:%M"), client, 80)
+
+      speakTime = True
+    return True
+
   elif -1 == int (ioChannel[0]): #No channel set, nothing playing.
+    if verbose:
+      WriteLog("No channel set: ", str (ioChannel[0]))
     return True
 
   # Else check if we're playing correct, and return status
@@ -259,7 +292,7 @@ def ScanIO (ioList):
   ioChan = list ()
 
   for pin, func in enumerate (ioList):
-    if -1 == func: #noop
+    if -1 == func: #noop pins
       continue
 
     if func < 10:                         # Prepare channels for input
@@ -268,13 +301,13 @@ def ScanIO (ioList):
       GPIO.setup (pin, GPIO.OUT, initial=GPIO.HIGH)
 
   for pin, func in enumerate (ioList):   # Look for HIGHs
-    if -1 == func: # noop 
+    if -1 == func: # noop pins
       continue
 
     if func < 10 and GPIO.input(pin):
       ioChan.append (func)
-      #if verbose:
-      #  print "Found high pin", pin, "func", func, "while looking for channels"
+      if verbose:
+        print "Found high pin", pin, "func", func, "while looking for channels"
 
   if 0 == len (ioChan):
     ioChan.append (-1)
@@ -285,7 +318,7 @@ def ScanIO (ioList):
 
   # Now we turn it around
   for pin, func in enumerate (ioList):   
-    if -1 == func: # noop
+    if -1 == func: # noop pins
       continue
 
     if func > 10:                        # Prepare volumes for input
@@ -296,19 +329,34 @@ def ScanIO (ioList):
       GPIO.setup (pin, GPIO.OUT, initial=GPIO.HIGH)
 
   for pin, func in enumerate (ioList): # Look for HIGHs
-    if -1 == func: #noop 
+    if -1 == func: #noop pins
       continue
 
     if func > 10 and GPIO.input(pin):
       ioVol.append (func)
-      #if verbose:
-      #  print "Found high pin", pin, "func", func, "while looking for volumes"
+      if verbose:
+        print "Found high pin", pin, "func", func, "while looking for volumes"
 
   if 0 == len (ioVol):
     ioVol.append (0)
-    print "No volume set"
+    if verbose:
+      print "No volume set"
 
   GPIO.cleanup()
+
+  # Check for same-row connections.
+  if 0 == ioVol[0] and -1 == ioChan[0]:
+    pinout = 4
+    pinin = 7
+
+    GPIO.setup (pinin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup (pinout, GPIO.OUT, initial=GPIO.HIGH)
+
+    if GPIO.input(pinin):
+      ioChan[0] = -4
+
+    GPIO.cleanup()
+
   return (ioVol, ioChan)
 
 
@@ -319,15 +367,15 @@ ioList = PopulateTables ()
 
 #GPIO.setmode (GPIO.BOARD)
 GPIO.setmode (GPIO.BCM) #Use GPIO numbers
-GPIO.setwarnings (False)
+#GPIO.setwarnings (False)
 
 try:
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
-    if not Compare ():
-      PlayStream (ioVolume, ioChannel)
+    if not Compare (client):
+      PlayStream (ioVolume, ioChannel, client)
 
-    time.sleep (5)
+    time.sleep (1)
 
 except KeyboardInterrupt:
   print "Shutting down cleanly ... (Ctrl + C)"
