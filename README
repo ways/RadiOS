@@ -1,9 +1,8 @@
-RadiOP
-------
-
 == Overview ==
 
 A basic internet radio, made to look good and make you want to touch it.
+
+[[RadiOP instruction manual]]
 
 == Inspiration ==
 * http://www.faxswitch.com/images/Switchboard.jpg
@@ -58,7 +57,7 @@ Cable-connector alternatives: https://www.dropbox.com/s/4qmqvfmieboolbc/IMG_2014
 
 === User adaptable ===
 
-* User programs wifi info + channel selection via text file or webUI.
+* User programs wifi info + channel selection via text file<strike> or webUI</strike>.
 * User writes channel names on front of box using chalk.
 
 === Inside ===
@@ -102,10 +101,14 @@ Cable-connector alternatives: https://www.dropbox.com/s/4qmqvfmieboolbc/IMG_2014
 
 == Software ==
 
+https://github.com/ways/RadiOS
+
 === OS ===
 # Simple solution: script to handle input, scipt to play music with selections made
 # More advanced: same as above, but with mpd for streaming
-# Advanced: same as first, but with http://www.woutervanwijk.nl/pimusicbox/ as backend. Will also allow spotify, local files, remote files, control via web, control via phone, lastfm, etc. Will be harder to integrate.
+# Advanced: same as first, but with http://www.woutervanwijk.nl/pimusicbox/ as backend. Will also allow spotify, local files, remote files, control via web, control via phone, lastfm, etc.
+
+We are currently using option 3, no problems so far.
 
 === One-wire-two-selections pseudo code ===
 * We have two rows of connections, #1 and #2.
@@ -119,6 +122,20 @@ Cable-connector alternatives: https://www.dropbox.com/s/4qmqvfmieboolbc/IMG_2014
  A -  D
  B  \-E
  C    F
+
+=== Software TODOs ===
+* Autostart (init script), with restart on crash.
+* Streamline config, mix with musicbox config?
+* Add spotify playlists as option on magnets.
+* Scream if no network/other trouble.
+* Catch all mpd (and network?) errors.
+* Hourly time
+* Install script
+** Install packages
+** Add default config
+** Add script + autostart
+** Set timezone
+* <strike>Allow same-row connections.</strike>
 
 == Material options ==
 
@@ -189,4 +206,10 @@ Cable-connector alternatives: https://www.dropbox.com/s/4qmqvfmieboolbc/IMG_2014
  +------+
   /|\ /|\
 
+You're quite the artist with these, eh?
+
+ |\_/|     
+ (. .)   - meow
+  =w= (\   
+ / ^ \//
 
