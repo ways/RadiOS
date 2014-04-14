@@ -138,21 +138,16 @@ def StopMPD (c):
 
   WriteLog ("Stopping MPD")
   try:
-    ConnectMPD (c)
     c.clear ()
     return True
   except mpd.ConnectionError():
     WriteLog ("MPD error")
     return False
-  finally:
-    DisconnectMPD (c)
 
 
 def MuteMPD (c):
   WriteLog ("Muting MPD.")
-  ConnectMPD (c)
   SetVolumeMPD (c, volVoice)
-  DisconnectMPD (c)
 
 
 def SetVolumeMPD (c, vol):
@@ -160,17 +155,12 @@ def SetVolumeMPD (c, vol):
   nowVolume = vol
 
   try:
-    ConnectMPD (c)
     c.setvol (int (vol))
     #os.system ('amixer cget numid=5 ')
     #os.system ('amixer cset numid=5 --quiet -- ' + str(vol) + '%')
   except mpd.ConnectionError():
     WriteLog('MPD error setting volume.')
     return False
-
-  finally:
-    DisconnectMPD (c)
-
   return True
 
 
@@ -180,7 +170,6 @@ def PlayMPD (c, volume, url):
 
   try:
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
-    ConnectMPD (c)
     c.add (url)
     SetVolumeMPD (c, 0)
     c.play ()
@@ -198,9 +187,6 @@ def PlayMPD (c, volume, url):
     WriteLog ("PlayMPD: Error connecting to MPD:" + str (e), True)
     return False
   
-  finally:
-    DisconnectMPD (c)
-
   if 'play' != mpdstatus['state']:
     Speak ('Unable to play channel ' + str (nowPlaying) + '?', c) 
     return False
@@ -302,7 +288,8 @@ def Compare (client):      # True if we do not need to start something
   print nowVolume
   print ioVolume[0]
 
-  if 0 == int (ioChannel[0]) and nowPlaying: # Stop if unplugged for more that a few seconds
+  # Stop if unplugged for more that a few seconds
+  if 0 == int (ioChannel[0]) and nowPlaying:
     if 20 > ( float (time.time ()) - float (nowTimestamp) ):
       WriteLog ("Stopping MPD due to nowPlaying " + \
         str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
@@ -310,7 +297,7 @@ def Compare (client):      # True if we do not need to start something
       nowTimestamp = 0
       StopMPD (client)
     else:
-      WriteLog ("Muting")
+      WriteLog ("Muting due to unplugged cable.")
       MuteMPD (client)
 
     return True
@@ -318,7 +305,7 @@ def Compare (client):      # True if we do not need to start something
   # Volume ok?
   elif nowPlaying and nowVolume != ioVolume[0]:
     WriteLog("Restoring volume")
-    SetVolumeMPD (client, ioVolume[0])
+    SetVolumeMPD (client, int (ioVolume[0]))
 
   # Channel ok?
   #elif 0 == int (ioChannel[0]): #No channel set, nothing playing.
@@ -335,7 +322,8 @@ def Compare (client):      # True if we do not need to start something
     return True
 
   else: # Else check if we're playing correct, and return status
-    return ( nowPlaying == int (ioChannel[0]) and nowVolume == int (ioVolume[0]) )
+    return ( nowPlaying == int (ioChannel[0]) \
+             and nowVolume == int (ioVolume[0]) )
 
 
 def ScanIO (ioList):
@@ -417,17 +405,17 @@ def ScanIO (ioList):
 
 
 def internet_on():
-    try:
-        response=urllib2.urlopen ('http://nrk.no/',timeout=2)
-        return True
-    except urllib2.URLError as err: pass
-    return False
+  try:
+    response = urllib2.urlopen ('http://nrk.no/', timeout=2)
+    return True
+  except urllib2.URLError as err: pass
+  return False
 
 
 # Main
 channelNames, channelUrls = ParseConfig ()
 ioList = PopulateTables ()
-#ConnectMPD (client)
+ConnectMPD (client)
 GPIO.setmode (GPIO.BCM) #Use GPIO numbers
 
 try:
@@ -446,6 +434,6 @@ try:
 except KeyboardInterrupt:
   print "Shutting down cleanly ... (Ctrl + C)"
 
-finally:  
-  #DisconnectMPD (client)
+finally:
+  DisconnectMPD (client)
   GPIO.cleanup()
