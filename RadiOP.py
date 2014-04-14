@@ -17,6 +17,7 @@
 
 # Main part of RadiOP
 # Requires apt-get install python-mpd python-rpi.gpio
+# Requires pip install python-mpd2
 # Can use espeak mpd
 #
 # Pseudo code:
@@ -40,11 +41,13 @@
 # 5       | 10
 # 6       | 5
 
-import time, syslog, mpd, ConfigParser, io, sys, os
+import time, syslog, ConfigParser, io, sys, os
 import RPi.GPIO as GPIO
+from mpd import MPDClient
 
 mpdhost = 'localhost'
-client = mpd.MPDClient () # Connection to mpd
+client = MPDClient () # Connection to mpd
+
 ioList = None        # Map GPIO to function
 channelNames = None  # User channel titles
 channelUrls = None   # User channel urls
@@ -106,7 +109,6 @@ def WriteLog (msg, error = False):
 
 def ConnectMPD (c):
   c.timeout = 10
-  c.idletimeout = None
   try:
     c.connect (mpdhost, 6600)
     c.clear ()
@@ -154,8 +156,8 @@ def SetVolumeMPD (c, vol):
 
 
 def PlayMPD (c, volume, url):
-  start = 20
-  step = 10
+  start = 0
+  step = 5
 
   try:
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
@@ -201,11 +203,11 @@ def PlayStream (ioVolume, ioChannel, client):
     )
 
   if useVoice:
-    Speak ("Playing " + channelNames[nowPlaying], client)
+    Speak ("Playing " + channelNames[nowPlaying], client, 3)
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
-def Speak (msg, client, volume=20):
+def Speak (msg, client, volume=5):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, volume)
   os.system ("espeak --stdout '" + msg + "' -a 300 -s 130 | aplay")
@@ -233,34 +235,34 @@ def PopulateTables ():   # Set up mapping from IO to function
 # 07 | channel 9
 
   ioList = [
-    0,  #0
-    0,  #1
-    0,  #2 100, This pin gives false positives
-    0,  #3 90, This pin gives false positives
-    100, #4
-    0,  #5
-    0,  #6
-    0,  #7 95
-    -7,   #8
-    11,   #9
-    -5,   #10
-    -1,   #11
-    0,  #12
-    0,  #13
-    -2,   #14
-    -3,  #15
-    0,  #16
-    90,  #17
-    -4,   #18
-    0,  #19
-    0,  #20
-    0,
-    60,  #22
-    -5,   #23
-    -6,   #24
-    -1,   #25
-    0,
-    80   #27
+      0,  #0
+      0,  #1
+      0,  #2 100, This pin gives false positives
+      0,  #3 90, This pin gives false positives
+    100,  #4
+      0,  #5
+      0,  #6
+      0,  #7 95
+     -7,  #8
+     10,  #9
+     -5,  #10
+     -1,  #11
+      0,  #12
+      0,  #13
+     -2,  #14
+     -3,  #15
+      0,  #16
+     90,  #17
+     -4,  #18
+      0,  #19
+      0,  #20
+      0,
+     60,  #22
+     -5,  #23
+     -6,  #24
+     -1,  #25
+      0,
+     80   #27
   ]
 
   if verbose:
