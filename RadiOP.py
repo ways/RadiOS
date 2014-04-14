@@ -33,12 +33,12 @@
 # Our physical input looks something like this:
 #
 # channel | volume
-# 1       | 100
-# 2       | 95
-# 3       | 90
-# 4       | 85
-# 5       | 80
-# 6       | 75
+# 1       | 50
+# 2       | 40
+# 3       | 30
+# 4       | 20
+# 5       | 10
+# 6       | 5
 
 import time, syslog, mpd, ConfigParser, io, sys, os
 import RPi.GPIO as GPIO
@@ -233,33 +233,33 @@ def PopulateTables ():   # Set up mapping from IO to function
 # 07 | channel 9
 
   ioList = [
-    -1,  #0
-    -1,  #1
-    -1,  #2 100, This pin gives false positives
-    -1,  #3 90, This pin gives false positives
+    0,  #0
+    0,  #1
+    0,  #2 100, This pin gives false positives
+    0,  #3 90, This pin gives false positives
     100, #4
-    -1,  #5
-    -1,  #6
-    -1,  #7 95
-    7,   #8
+    0,  #5
+    0,  #6
+    0,  #7 95
+    -7,   #8
     11,   #9
-    5,   #10
-    1,   #11
-    -1,  #12
-    -1,  #13
-    2,   #14
-    3,  #15
-    -1,  #16
+    -5,   #10
+    -1,   #11
+    0,  #12
+    0,  #13
+    -2,   #14
+    -3,  #15
+    0,  #16
     90,  #17
-    4,   #18
-    -1,  #19
-    -1,  #20
-    -1,
+    -4,   #18
+    0,  #19
+    0,  #20
+    0,
     60,  #22
-    5,   #23
-    6,   #24
-    1,   #25
-    -1,
+    -5,   #23
+    -6,   #24
+    -1,   #25
+    0,
     80   #27
   ]
 
@@ -272,10 +272,10 @@ def PopulateTables ():   # Set up mapping from IO to function
 def Compare (client):      # True if we do not need to start something
   global nowPlaying, speakTime
 
-#  if verbose and 2 < len (str (nowPlaying)):
-#    WriteLog("nowPlaying: ", nowPlaying)
+  #if verbose and 2 < len (str (nowPlaying)):
+  #  WriteLog("nowPlaying: ", nowPlaying)
 
-  if -1 == int (ioChannel[0]) \
+  if 0 == int (ioChannel[0]) \
     and nowPlaying:          # Stop if unplugged for more that a few seconds
     WriteLog ("Stopping MPD due to nowPlaying " + \
       str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
@@ -284,7 +284,7 @@ def Compare (client):      # True if we do not need to start something
     StopMPD (client)
     return True
 
-  elif -4 == int (ioChannel[0]): #Hourly speakTime
+  elif -40 == int (ioChannel[0]): #Hourly speakTime
     if not speakTime:
       WriteLog ("Activating speakTime")
       Speak ("Time is now " + time.strftime("%H:%M"), client, 80)
@@ -292,7 +292,7 @@ def Compare (client):      # True if we do not need to start something
       speakTime = True
     return True
 
-  elif -1 == int (ioChannel[0]): #No channel set, nothing playing.
+  elif 0 == int (ioChannel[0]): #No channel set, nothing playing.
     if verbose:
       WriteLog("No channel set: ", str (ioChannel[0]))
     return True
@@ -305,48 +305,52 @@ def ScanIO (ioList):
   ioVol = list ()
   ioChan = list ()
 
+  # Set up for channel
   for pin, func in enumerate (ioList):
-    if -1 == func: #noop pins
+    if 0 == func: #noop pins
       continue
 
-    if func < 10:                         # Prepare channels for input
+    if 0 > func:                         # Prepare channels for input
       GPIO.setup (pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     else:                                # Prepare volumes for output
       GPIO.setup (pin, GPIO.OUT, initial=GPIO.HIGH)
 
+  # Look for channel
   for pin, func in enumerate (ioList):   # Look for HIGHs
-    if -1 == func: # noop pins
+    if 0 == func: # noop pins
       continue
 
-    if func < 10 and GPIO.input(pin):
-      ioChan.append (func)
+    if 0 > func and GPIO.input(pin):
+      ioChan.append ( abs (func) )
       if verbose:
         print "Found high pin", pin, "func", func, "while looking for channels"
 
   if 0 == len (ioChan):
-    ioChan.append (-1)
+    ioChan.append (0)
     if verbose:
-      print "No channel set"
+      print "No channel set."
 
   GPIO.cleanup()
 
   # Now we turn it around
+  # Set up for volume
   for pin, func in enumerate (ioList):   
-    if -1 == func: # noop pins
+    if 0 == func: # noop pins
       continue
 
-    if func > 10:                        # Prepare volumes for input
+    if 0 < func:                        # Prepare volumes for input
       #print "setting pin", pin, "func", func, "as in"
       GPIO.setup (pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     else:                                # Prepare channels for output
       #print "setting pin", pin, "func", func, "as out"
       GPIO.setup (pin, GPIO.OUT, initial=GPIO.HIGH)
 
+  # Look for volume
   for pin, func in enumerate (ioList): # Look for HIGHs
-    if -1 == func: #noop pins
+    if 0 == func: #noop pins
       continue
 
-    if func > 10 and GPIO.input(pin):
+    if 0 < func and GPIO.input(pin):
       ioVol.append (func)
       if verbose:
         print "Found high pin", pin, "func", func, "while looking for volumes"
@@ -359,17 +363,18 @@ def ScanIO (ioList):
   GPIO.cleanup()
 
   # Check for same-row connections.
-  if 0 == ioVol[0] and -1 == ioChan[0]:
-    pinout = 4
-    pinin = 7
+  # TODO: Currently disabled.
+  #if 0 == ioVol[0] and -1 == ioChan[0]:
+  #  pinout = 4
+  #  pinin = 7
 
-    GPIO.setup (pinin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-    GPIO.setup (pinout, GPIO.OUT, initial=GPIO.HIGH)
+  #  GPIO.setup (pinin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+  #  GPIO.setup (pinout, GPIO.OUT, initial=GPIO.HIGH)
 
-    if GPIO.input(pinin):
-      ioChan[0] = -4
+  #  if GPIO.input(pinin):
+  #    ioChan[0] = -40
 
-    GPIO.cleanup()
+  #  GPIO.cleanup()
 
   return (ioVol, ioChan)
 
