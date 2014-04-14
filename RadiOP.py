@@ -17,7 +17,7 @@
 
 # Main part of RadiOP
 # Requires apt-get install python-mpd python-rpi.gpio
-# Requires pip install python-mpd2
+# Requires pip install python-mpd2 ( http://pythonhosted.org/python-mpd2/topics/commands.html )
 # Can use espeak mpd
 #
 # Pseudo code:
@@ -41,12 +41,11 @@
 # 5       | 10
 # 6       | 5
 
-import time, syslog, ConfigParser, io, sys, os
+import time, syslog, ConfigParser, io, sys, os, mpd
 import RPi.GPIO as GPIO
-from mpd import MPDClient
 
 mpdhost = 'localhost'
-client = MPDClient () # Connection to mpd
+client = mpd.MPDClient () # Connection to mpd
 
 ioList = None        # Map GPIO to function
 channelNames = None  # User channel titles
@@ -64,6 +63,7 @@ configFile = "/boot/config/config.txt"
 
                      # User configurable
 useVoice = True      # Announce channels
+volVoice = 3
 verbose = True       # Development variables
 
 
@@ -111,14 +111,14 @@ def ConnectMPD (c):
   c.timeout = 10
   try:
     c.connect (mpdhost, 6600)
+    #c.crossfade (5)
     c.clear ()
   except mpd.ConnectionError():
     WriteLog ("Error connecting to MPD", True)
     return False
   
   WriteLog ("Connected to MPD version " + c.mpd_version)
-  SetVolumeMPD(c, 0)
-  #Speak ("Hello", c, 50)
+  SetVolumeMPD (c, 0)
   return True
 
 def StopMPD (c):
@@ -139,18 +139,19 @@ def StopMPD (c):
 
 def MuteMPD (c):
   WriteLog ("Muting MPD.")
-  SetVolumeMPD (c, 0)
+  SetVolumeMPD (c, volVoice)
 
 
 def SetVolumeMPD (c, vol):
   WriteLog ("Setting volume to " + str (vol) + ".")
+  nowVolume = vol
+
   try:
     c.setvol (int (vol))
-    #os.system ("amixer cset numid=1 " + str(vol) + "%")
-    #os.system ("amixer set PCM --quiet -- " + str(vol) + "%")
-    os.system ("amixer set Speaker --quiet -- " + str(vol) + "%")
+    os.system ('amixer cget numid=5 ')
+    os.system ('amixer cset numid=5 -- ' + str(vol) + '%')
   except mpd.ConnectionError():
-    WriteLog("MPD error setting volume.")
+    WriteLog('MPD error setting volume.')
     return False
   return True
 
@@ -167,13 +168,19 @@ def PlayMPD (c, volume, url):
 
     for v in range (start, volume + step, step):
       SetVolumeMPD (c, v)
-      time.sleep (.1)
+      time.sleep (.05)
 
   except mpd.CommandError, e:
     WriteLog ("PlayMPD: Error commanding mpd: " + str(e))
     return False
   except mpd.ConnectionError, e:
     WriteLog ("PlayMPD: Error connecting to MPD:" + str (e), True)
+    return False
+
+  time.sleep (5)
+  mpdstatus = c.status()
+  if 'play' != mpdstatus['state']:
+    Speak ('Unable to play channel ' + str (nowPlaying) + '?', c) 
     return False
 
   return True
@@ -203,14 +210,14 @@ def PlayStream (ioVolume, ioChannel, client):
     )
 
   if useVoice:
-    Speak ("Playing " + channelNames[nowPlaying], client, 3)
+    Speak ("Playing " + channelNames[nowPlaying], client, 2)
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
 def Speak (msg, client, volume=5):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, volume)
-  os.system ("espeak --stdout '" + msg + "' -a 300 -s 130 | aplay")
+  os.system ("espeak -a1 --stdout '" + msg + "' -a 300 -s 130 | aplay --quiet")
 
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
@@ -244,7 +251,7 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #6
       0,  #7 95
      -7,  #8
-     10,  #9
+     20,  #9
      -5,  #10
      -1,  #11
       0,  #12
@@ -272,18 +279,22 @@ def PopulateTables ():   # Set up mapping from IO to function
 
 
 def Compare (client):      # True if we do not need to start something
-  global nowPlaying, speakTime
+  global nowPlaying, speakTime, nowTimestamp
 
   #if verbose and 2 < len (str (nowPlaying)):
   #  WriteLog("nowPlaying: ", nowPlaying)
 
-  if 0 == int (ioChannel[0]) \
-    and nowPlaying:          # Stop if unplugged for more that a few seconds
-    WriteLog ("Stopping MPD due to nowPlaying " + \
-      str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
+  if 0 == int (ioChannel[0]) and nowPlaying: # Stop if unplugged for more that a few seconds
+    if 15 > ( float (time.time ()) - float (nowTimestamp) ):
+      WriteLog ("Stopping MPD due to nowPlaying " + \
+        str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
+      nowPlaying = False
+      nowTimestamp = 0
+      StopMPD (client)
+    else:
+      WriteLog ("Muting")
+      MuteMPD (client)
 
-    nowPlaying = False
-    StopMPD (client)
     return True
 
   elif -40 == int (ioChannel[0]): #Hourly speakTime
@@ -300,6 +311,7 @@ def Compare (client):      # True if we do not need to start something
     return True
 
   # Else check if we're playing correct, and return status
+  nowTimestamp = time.time ()
   return ( nowPlaying == int (ioChannel[0]) and nowVolume == int (ioVolume[0]) )
 
 
@@ -389,6 +401,7 @@ ioList = PopulateTables ()
 GPIO.setmode (GPIO.BCM) #Use GPIO numbers
 
 try:
+  Speak ("Hello", client, volVoice)
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
     if not Compare (client):
