@@ -2,6 +2,13 @@
 
 A basic internet radio, made to look good and make you want to touch it.
 
+--- Paste from internal wiki: ---
+
+
+== Overview ==
+
+A basic internet radio, made to look good and make you want to touch it.
+
 [[RadiOP instruction manual]]
 
 == Inspiration ==
@@ -124,18 +131,23 @@ We are currently using option 3, no problems so far.
  C    F
 
 === Software TODOs ===
-* Autostart (init script), with restart on crash.
-* Streamline config, mix with musicbox config?
 * Add spotify playlists as option on magnets.
 * Scream if no network/other trouble.
-* Catch all mpd (and network?) errors.
-* Hourly time
+* Hourly time if set.
+* Streamline config, mix with musicbox config?
+* Detect if unable to play stream, and talk about it.
+* Debug volume troubles, and set sensible defaults.
+* Push channels to negative numbers, to allow full volume range.
+* Test/merge with musicbox 5 when out of alpha.
+* <strike>Allow same-row connections.
+* Autostart (init script), with restart on crash.
+* Catch all mpd errors.
 * Install script
 ** Install packages
 ** Add default config
 ** Add script + autostart
 ** Set timezone
-* <strike>Allow same-row connections.</strike>
+</strike>
 
 == Material options ==
 
@@ -143,18 +155,18 @@ We are currently using option 3, no problems so far.
 # Old driftwood box, large jacks, fabric cables.
 # Transparent.
 # Deluxe model in kitchen bench material. CNC to hollow out.
+# Ceramic bowl. May use housing as acoustic chamber.
 
 == Open questions ==
 
 === Yes, let's try that ===
 
-* Should we put magnets/metal between points, to allow magnet to slide to the next point.
 * Should the magnets be in the box, and cable simply be ferromagnetic? Allows to switch cable more easily.
-* Line in/out?
-* Internal PSU.
+* Instead of having dead ports, should we have two ports for alternative stuff? Like "touch one of them with the magnet to announce time", now and every hour. Or touch one to shut down.
 
 === Perhaps ===
 
+* Should we put magnets/metal between points, to allow magnet to slide to the next point.
 * Battery?
 * Room to add several music angels? Different amp?
 * Set wifi to ad-hoc if no wifi? Allows ad-hoc network to stream music or configure system without access to AP.
@@ -164,10 +176,11 @@ We are currently using option 3, no problems so far.
 
 === Probably not ===
 
-* Instead of having dead ports, should we have two ports for alternative stuff? Like "touch one of them with the magnet to announce time", now and every hour. Or touch one to shut down.
+* Line in/out?
+* Internal PSU.
+* Do we need more ports? For more channels, more volume settings.
 ** Can we change this in software later or does it require different wiring?
 ** We would need to reserve ports for this, but function can be decided later. In other words, if we find that we have too many channels and volumes, we can repurpose them.
-* Do we need more ports? For more channels, more volume settings.
 * Should we have less ports for aesthetics?
 * LEDs.
 * Radio speaks in clips from movies, songs. E.g. "What...we have here...is failure..to communicate" (no connection), "Gooood morning, vietnam" (on)
@@ -212,4 +225,3 @@ You're quite the artist with these, eh?
  (. .)   - meow
   =w= (\   
  / ^ \//
-
