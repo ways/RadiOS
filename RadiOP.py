@@ -60,14 +60,14 @@ speakTime = False
 configFile = "/boot/config/config.txt"
 
                      # User configurable
-useVoice = False     # Announce channels
+useVoice = True      # Announce channels
 verbose = True       # Development variables
 
 
 def ParseConfig ():
   section = 'Channels'
-  channelnames = list ()
-  channelurls = list ()
+  channelnames = ['noop']
+  channelurls = ['noop']
 
   try:
     config = ConfigParser.RawConfigParser (allow_no_value=True)
@@ -76,6 +76,9 @@ def ParseConfig ():
     for i in range (1, 9):
       channelnames.append (config.get (section, 'channel' + str (i) + '_name'))
       channelurls.append (config.get (section, 'channel' + str (i) + '_url'))
+      if verbose:
+        print "Added "+ str(i) + " - " + str(config.get (section, 'channel' + str (i) + '_name\
+'))
 
   except ConfigParser.NoOptionError, e:
     WriteLog ("Error in config file " + configFile + ". Error: " + str (e), \
@@ -106,22 +109,29 @@ def ConnectMPD (c):
   c.idletimeout = None
   try:
     c.connect (mpdhost, 6600)
+    c.clear ()
   except mpd.ConnectionError():
     WriteLog ("Error connecting to MPD", True)
     return False
-
+  
   WriteLog ("Connected to MPD version " + c.mpd_version)
-  SetVolumeMPD (client, 50)
-  Speak ("Hello", c)
+  SetVolumeMPD(c, 0)
+  #Speak ("Hello", c, 50)
   return True
 
 def StopMPD (c):
-  WriteLog("Stopping MPD")
+#  step = -10
+#  volume = nowVolume
+#  for v in range (nowVolume, 0, step):
+#    SetVolumeMPD (c, v)
+#    time.sleep (.1)
+
+  WriteLog ("Stopping MPD")
   try:
     c.clear ()
     return True
   except mpd.ConnectionError():
-    WriteLog("MPD error")
+    WriteLog ("MPD error")
     return False
 
 
@@ -134,14 +144,18 @@ def SetVolumeMPD (c, vol):
   WriteLog ("Setting volume to " + str (vol) + ".")
   try:
     c.setvol (int (vol))
+    #os.system ("amixer cset numid=1 " + str(vol) + "%")
+    #os.system ("amixer set PCM --quiet -- " + str(vol) + "%")
+    os.system ("amixer set Speaker --quiet -- " + str(vol) + "%")
   except mpd.ConnectionError():
-    WriteLog("MPD error")
+    WriteLog("MPD error setting volume.")
     return False
+  return True
 
 
 def PlayMPD (c, volume, url):
   start = 20
-  step = 5
+  step = 10
 
   try:
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
@@ -178,7 +192,7 @@ def PlayStream (ioVolume, ioChannel, client):
   StopMPD (client)
 
   if len (channelNames) <= nowPlaying:   # We don't have that many channels
-    Speak ("Channel is not configured.", client)
+    Speak ("Channel " + str(nowPlaying) + " is not configured.", client)
     return False
     
   WriteLog ("Will play channel " + str (nowPlaying) + \
@@ -191,14 +205,14 @@ def PlayStream (ioVolume, ioChannel, client):
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
-def Speak (msg, client, volume=50):
+def Speak (msg, client, volume=20):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, volume)
-  os.system("espeak --stdout '" + msg + "' -a 300 -s 130 | aplay")
-
+  os.system ("espeak --stdout '" + msg + "' -a 300 -s 130 | aplay")
 
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
+# Function: volumes are positive, channels negative. 0 is noop.
 # 2  | volume 100
 # 3  | volume 90
 # 4  | volume 80
@@ -221,32 +235,32 @@ def PopulateTables ():   # Set up mapping from IO to function
   ioList = [
     -1,  #0
     -1,  #1
-    -1, #2 100, This pin gives false positives
+    -1,  #2 100, This pin gives false positives
     -1,  #3 90, This pin gives false positives
-    100,  #4
+    100, #4
     -1,  #5
     -1,  #6
-    95,  #7
-    8,   #8
-    85,  #9
-     5, #10
-    1,  #11
-    -1, #12
-    -1, #13
-    2,  #14
+    -1,  #7 95
+    7,   #8
+    11,   #9
+    5,   #10
+    1,   #11
+    -1,  #12
+    -1,  #13
+    2,   #14
     3,  #15
-    -1, #16
-    90, #17
-    4,  #18
-    -1, #19
-    -1, #20
+    -1,  #16
+    90,  #17
+    4,   #18
+    -1,  #19
+    -1,  #20
     -1,
-    65, #22
-    5,  #23
-    6,  #24
-    7,  #25
+    60,  #22
+    5,   #23
+    6,   #24
+    1,   #25
     -1,
-    80  #27
+    80   #27
   ]
 
   if verbose:
@@ -365,9 +379,7 @@ channelNames, channelUrls = ParseConfig ()
 ConnectMPD (client)
 ioList = PopulateTables ()
 
-#GPIO.setmode (GPIO.BOARD)
 GPIO.setmode (GPIO.BCM) #Use GPIO numbers
-#GPIO.setwarnings (False)
 
 try:
   while True:
