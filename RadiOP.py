@@ -148,8 +148,8 @@ def SetVolumeMPD (c, vol):
 
   try:
     c.setvol (int (vol))
-    os.system ('amixer cget numid=5 ')
-    os.system ('amixer cset numid=5 -- ' + str(vol) + '%')
+    #os.system ('amixer cget numid=5 ')
+    os.system ('amixer cset numid=5 --quiet -- ' + str(vol) + '%')
   except mpd.ConnectionError():
     WriteLog('MPD error setting volume.')
     return False
