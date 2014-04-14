@@ -41,7 +41,7 @@
 # 5       | 10
 # 6       | 5
 
-import time, syslog, ConfigParser, io, sys, os, mpd
+import time, syslog, ConfigParser, io, sys, os, mpd, urllib2
 import RPi.GPIO as GPIO
 
 mpdhost = 'localhost'
@@ -52,7 +52,7 @@ channelNames = None  # User channel titles
 channelUrls = None   # User channel urls
 nowPlaying = False   # Status variables
 nowVolume = 0
-nowTimestamp = 1
+nowTimestamp = 0
 prevPlaying = False
 prevVolume = 0
 prevTimestamp = 0
@@ -77,15 +77,17 @@ def ParseConfig ():
     config.read (configFile)
 
     for i in range (1, 9):
-      channelnames.append (config.get (section, 'channel' + str (i) + '_name'))
-      channelurls.append (config.get (section, 'channel' + str (i) + '_url'))
+      channelnames.append (config.get (section, 'channel' \
+        + str (i) + '_name'))
+      channelurls.append (config.get (section, 'channel' + \
+        str (i) + '_url'))
       if verbose:
-        print "Added "+ str(i) + " - " + str(config.get (section, 'channel' + str (i) + '_name\
-'))
+        print "Added "+ str(i) + " - " \
+          + str(config.get (section, 'channel' + str (i) + '_name'))
 
   except ConfigParser.NoOptionError, e:
-    WriteLog ("Error in config file " + configFile + ". Error: " + str (e), \
-      True)
+    WriteLog ("Error in config file " + configFile + ". Error: " \
+      + str (e), True)
 
   except ConfigParser.Error:
     print "Error reading config file " + configFile
@@ -100,6 +102,7 @@ def ParseConfig ():
 
   return channelnames, channelurls
 
+
 def WriteLog (msg, error = False):
   severity = syslog.LOG_INFO
   if error:
@@ -108,18 +111,23 @@ def WriteLog (msg, error = False):
 
 
 def ConnectMPD (c):
-  c.timeout = 10
   try:
     c.connect (mpdhost, 6600)
     #c.crossfade (5)
-    c.clear ()
   except mpd.ConnectionError():
     WriteLog ("Error connecting to MPD", True)
     return False
   
-  WriteLog ("Connected to MPD version " + c.mpd_version)
-  SetVolumeMPD (c, 0)
+  #WriteLog ("Connected to MPD version " + c.mpd_version)
   return True
+
+
+def DisconnectMPD (c):
+  try:
+    c.close ()
+  except mpd.ConnectionError():
+    pass
+
 
 def StopMPD (c):
 #  step = -10
@@ -130,16 +138,21 @@ def StopMPD (c):
 
   WriteLog ("Stopping MPD")
   try:
+    ConnectMPD (c)
     c.clear ()
     return True
   except mpd.ConnectionError():
     WriteLog ("MPD error")
     return False
+  finally:
+    DisconnectMPD (c)
 
 
 def MuteMPD (c):
   WriteLog ("Muting MPD.")
+  ConnectMPD (c)
   SetVolumeMPD (c, volVoice)
+  DisconnectMPD (c)
 
 
 def SetVolumeMPD (c, vol):
@@ -147,12 +160,17 @@ def SetVolumeMPD (c, vol):
   nowVolume = vol
 
   try:
+    ConnectMPD (c)
     c.setvol (int (vol))
     #os.system ('amixer cget numid=5 ')
-    os.system ('amixer cset numid=5 --quiet -- ' + str(vol) + '%')
+    #os.system ('amixer cset numid=5 --quiet -- ' + str(vol) + '%')
   except mpd.ConnectionError():
     WriteLog('MPD error setting volume.')
     return False
+
+  finally:
+    DisconnectMPD (c)
+
   return True
 
 
@@ -162,6 +180,7 @@ def PlayMPD (c, volume, url):
 
   try:
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
+    ConnectMPD (c)
     c.add (url)
     SetVolumeMPD (c, 0)
     c.play ()
@@ -170,15 +189,18 @@ def PlayMPD (c, volume, url):
       SetVolumeMPD (c, v)
       time.sleep (.05)
 
+    time.sleep (5)
+    mpdstatus = c.status()
   except mpd.CommandError, e:
     WriteLog ("PlayMPD: Error commanding mpd: " + str(e))
     return False
   except mpd.ConnectionError, e:
     WriteLog ("PlayMPD: Error connecting to MPD:" + str (e), True)
     return False
+  
+  finally:
+    DisconnectMPD (c)
 
-  time.sleep (5)
-  mpdstatus = c.status()
   if 'play' != mpdstatus['state']:
     Speak ('Unable to play channel ' + str (nowPlaying) + '?', c) 
     return False
@@ -187,18 +209,12 @@ def PlayMPD (c, volume, url):
 
 
 def PlayStream (ioVolume, ioChannel, client):
-  global nowPlaying, nowVolume, nowTimestamp, prevPlaying, prevVolume, \
-    prevTimestamp
-
-  prevPlaying = nowPlaying
-  prevVolume = nowVolume
-  prevTimestamp = nowTimestamp
+  global nowPlaying, nowVolume, nowTimestamp
 
   nowPlaying = int (ioChannel[0])
   nowVolume = int (ioVolume[0])
-  nowTimestamp = time.time ()
 
-  StopMPD (client)
+  #StopMPD (client)
 
   if len (channelNames) <= nowPlaying:   # We don't have that many channels
     Speak ("Channel " + str(nowPlaying) + " is not configured.", client)
@@ -206,18 +222,18 @@ def PlayStream (ioVolume, ioChannel, client):
     
   WriteLog ("Will play channel " + str (nowPlaying) + \
     " (named " + channelNames[nowPlaying] + \
-    ") at volume " + str (nowVolume) + "."
-    )
+    ") at volume " + str (nowVolume) + "." )
 
   if useVoice:
     Speak ("Playing " + channelNames[nowPlaying], client, 2)
+  nowTimestamp = time.time ()
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
 def Speak (msg, client, volume=5):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, volume)
-  os.system ("espeak -a1 --stdout '" + msg + "' -a 300 -s 130 | aplay --quiet")
+  os.system ('espeak -a ' + str (volume) + ' -s 130 --stdout "' + msg + '" | aplay --quiet')
 
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
@@ -281,11 +297,13 @@ def PopulateTables ():   # Set up mapping from IO to function
 def Compare (client):      # True if we do not need to start something
   global nowPlaying, speakTime, nowTimestamp
 
-  #if verbose and 2 < len (str (nowPlaying)):
-  #  WriteLog("nowPlaying: ", nowPlaying)
+  print time.time ()
+  print nowTimestamp
+  print nowVolume
+  print ioVolume[0]
 
   if 0 == int (ioChannel[0]) and nowPlaying: # Stop if unplugged for more that a few seconds
-    if 15 > ( float (time.time ()) - float (nowTimestamp) ):
+    if 20 > ( float (time.time ()) - float (nowTimestamp) ):
       WriteLog ("Stopping MPD due to nowPlaying " + \
         str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
       nowPlaying = False
@@ -297,6 +315,17 @@ def Compare (client):      # True if we do not need to start something
 
     return True
 
+  # Volume ok?
+  elif nowPlaying and nowVolume != ioVolume[0]:
+    WriteLog("Restoring volume")
+    SetVolumeMPD (client, ioVolume[0])
+
+  # Channel ok?
+  #elif 0 == int (ioChannel[0]): #No channel set, nothing playing.
+  #  if verbose:
+  #    WriteLog("No channel set: ", str (ioChannel[0]))
+  #  return True
+
   elif -40 == int (ioChannel[0]): #Hourly speakTime
     if not speakTime:
       WriteLog ("Activating speakTime")
@@ -305,14 +334,8 @@ def Compare (client):      # True if we do not need to start something
       speakTime = True
     return True
 
-  elif 0 == int (ioChannel[0]): #No channel set, nothing playing.
-    if verbose:
-      WriteLog("No channel set: ", str (ioChannel[0]))
-    return True
-
-  # Else check if we're playing correct, and return status
-  nowTimestamp = time.time ()
-  return ( nowPlaying == int (ioChannel[0]) and nowVolume == int (ioVolume[0]) )
+  else: # Else check if we're playing correct, and return status
+    return ( nowPlaying == int (ioChannel[0]) and nowVolume == int (ioVolume[0]) )
 
 
 def ScanIO (ioList):
@@ -393,15 +416,26 @@ def ScanIO (ioList):
   return (ioVol, ioChan)
 
 
+def internet_on():
+    try:
+        response=urllib2.urlopen ('http://nrk.no/',timeout=2)
+        return True
+    except urllib2.URLError as err: pass
+    return False
+
+
 # Main
 channelNames, channelUrls = ParseConfig ()
-ConnectMPD (client)
 ioList = PopulateTables ()
-
+#ConnectMPD (client)
 GPIO.setmode (GPIO.BCM) #Use GPIO numbers
 
 try:
-  Speak ("Hello", client, volVoice)
+  if not internet_on ():
+    Speak ("Uh oh. No network.", client)
+  else:
+    Speak ("Hello.", client, volVoice)
+
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
     if not Compare (client):
@@ -413,4 +447,5 @@ except KeyboardInterrupt:
   print "Shutting down cleanly ... (Ctrl + C)"
 
 finally:  
-    GPIO.cleanup()
+  #DisconnectMPD (client)
+  GPIO.cleanup()
