@@ -55,7 +55,7 @@ nowVolume = 0
 nowTimestamp = 0
 prevPlaying = False
 prevVolume = 0
-prevTimestamp = 0
+muted = False
 ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
 speakTime = False
@@ -63,7 +63,6 @@ configFile = "/boot/config/config.txt"
 
                      # User configurable
 useVoice = True      # Announce channels
-volVoice = 3
 verbose = True       # Development variables
 
 
@@ -146,8 +145,13 @@ def StopMPD (c):
 
 
 def MuteMPD (c):
+  global muted, prevVolume
+
   WriteLog ("Muting MPD.")
-  SetVolumeMPD (c, volVoice)
+  prevVolume = nowVolume
+  muted = True
+  #c.pause (1)
+  SetVolumeMPD (c, 0)
 
 
 def SetVolumeMPD (c, vol):
@@ -165,11 +169,12 @@ def SetVolumeMPD (c, vol):
 
 
 def PlayMPD (c, volume, url):
-  start = 0
-  step = 5
+  start = 1
+  step = 1
 
   try:
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
+    c.clear ()
     c.add (url)
     SetVolumeMPD (c, 0)
     c.play ()
@@ -200,9 +205,11 @@ def PlayStream (ioVolume, ioChannel, client):
   nowPlaying = int (ioChannel[0])
   nowVolume = int (ioVolume[0])
 
-  #StopMPD (client)
+  StopMPD (client)
 
-  if len (channelNames) <= nowPlaying:   # We don't have that many channels
+  if 0 == nowPlaying:
+    return False
+  elif len (channelNames) <= nowPlaying:  # We don't have that many channels
     Speak ("Channel " + str(nowPlaying) + " is not configured.", client)
     return False
     
@@ -216,10 +223,11 @@ def PlayStream (ioVolume, ioChannel, client):
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
-def Speak (msg, client, volume=5):
+def Speak (msg, client, volume=1):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, volume)
-  os.system ('espeak -a ' + str (volume) + ' -s 130 --stdout "' + msg + '" | aplay --quiet')
+  os.system ('espeak -a ' + str (volume) + ' -s 130 --stdout "' \
+    + msg + '" | aplay --quiet')
 
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
@@ -253,7 +261,7 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #6
       0,  #7 95
      -7,  #8
-     20,  #9
+      1,  #9
      -5,  #10
      -1,  #11
       0,  #12
@@ -266,7 +274,7 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #19
       0,  #20
       0,
-     60,  #22
+     30,  #22
      -5,  #23
      -6,  #24
      -1,  #25
@@ -283,43 +291,21 @@ def PopulateTables ():   # Set up mapping from IO to function
 def Compare (client):      # True if we do not need to start something
   global nowPlaying, speakTime, nowTimestamp
 
-  print time.time ()
-  print nowTimestamp
-  print nowVolume
-  print ioVolume[0]
-
-  # Stop if unplugged for more that a few seconds
-  if 0 == int (ioChannel[0]) and nowPlaying:
-    if 20 > ( float (time.time ()) - float (nowTimestamp) ):
-      WriteLog ("Stopping MPD due to nowPlaying " + \
-        str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
-      nowPlaying = False
-      nowTimestamp = 0
-      StopMPD (client)
-    else:
-      WriteLog ("Muting due to unplugged cable.")
-      MuteMPD (client)
-
+  # If unplugged, but playing
+  if 0 == ioChannel[0] and nowPlaying:
+    WriteLog ("Stopping MPD due to nowPlaying " + \
+      str (nowPlaying) + " or ioChannel " + str (ioChannel[0]) )
+    nowPlaying = False
+    StopMPD (client)
     return True
 
-  # Volume ok?
-  elif nowPlaying and nowVolume != ioVolume[0]:
-    WriteLog("Restoring volume")
-    SetVolumeMPD (client, int (ioVolume[0]))
+  #elif -40 == int (ioChannel[0]): #Hourly speakTime
+  #  if not speakTime:
+  #    WriteLog ("Activating speakTime")
+  #    Speak ("Time is now " + time.strftime("%H:%M"), client, 80)
 
-  # Channel ok?
-  #elif 0 == int (ioChannel[0]): #No channel set, nothing playing.
-  #  if verbose:
-  #    WriteLog("No channel set: ", str (ioChannel[0]))
+  #    speakTime = True
   #  return True
-
-  elif -40 == int (ioChannel[0]): #Hourly speakTime
-    if not speakTime:
-      WriteLog ("Activating speakTime")
-      Speak ("Time is now " + time.strftime("%H:%M"), client, 80)
-
-      speakTime = True
-    return True
 
   else: # Else check if we're playing correct, and return status
     return ( nowPlaying == int (ioChannel[0]) \
@@ -422,7 +408,7 @@ try:
   if not internet_on ():
     Speak ("Uh oh. No network.", client)
   else:
-    Speak ("Hello.", client, volVoice)
+    Speak ("Radios online.", client)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
