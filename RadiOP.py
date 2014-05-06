@@ -171,6 +171,8 @@ def SetVolumeMPD (c, vol):
 def PlayMPD (c, volume, url):
   start = 1
   step = 1
+  if 10 < volume:
+    step = 10
 
   try:
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
@@ -252,34 +254,34 @@ def PopulateTables ():   # Set up mapping from IO to function
 # 07 | channel 9
 
   ioList = [
-      0,  #0
-      0,  #1
-      0,  #2 100, This pin gives false positives
-      0,  #3 90, This pin gives false positives
-    100,  #4
+      0,  #0 Doesn't exist
+      0,  #1 Doesn't exist on Raspi rev2 and later
+      0,  #2 This pin gives false positives
+      0,  #3 This pin gives false positives
+     40,  #4
       0,  #5
       0,  #6
       0,  #7 95
-     -7,  #8
-      1,  #9
-     -5,  #10
-     -1,  #11
+     -1,  #8
+    666,  #9
+     20,  #10
+     30,  #11
       0,  #12
       0,  #13
-     -2,  #14
-     -3,  #15
+     -7,  #14
+     -6,  #15
       0,  #16
-     90,  #17
-     -4,  #18
+      1,  #17
+     -5,  #18
       0,  #19
       0,  #20
       0,
-     30,  #22
+     10,  #22
      -5,  #23
-     -6,  #24
-     -1,  #25
+     -3,  #24
+     -2,  #25
       0,
-     80   #27
+      5   #27
   ]
 
   if verbose:
@@ -306,6 +308,16 @@ def Compare (client):      # True if we do not need to start something
 
   #    speakTime = True
   #  return True
+
+  elif 666 == int (ioVolume[0]): 
+    WriteLog ("Shutting down")
+    Speak ("Good bye.", client, 10)
+    Speak ("Good bye.", client, 7)
+    Speak ("Good bye.", client, 5)
+    Speak ("Ouch.", client, 5)
+    StopMPD (client)
+    os.system("sudo halt")
+    return True
 
   else: # Else check if we're playing correct, and return status
     return ( nowPlaying == int (ioChannel[0]) \
@@ -336,6 +348,7 @@ def ScanIO (ioList):
       if verbose:
         print "Found high pin", pin, "func", func, "while looking for channels"
 
+  # Channel sanity checks
   if 0 == len (ioChan):
     ioChan.append (0)
     if verbose:
@@ -366,6 +379,7 @@ def ScanIO (ioList):
       if verbose:
         print "Found high pin", pin, "func", func, "while looking for volumes"
 
+  # Volume sanity checks
   if 0 == len (ioVol):
     ioVol.append (0)
     if verbose:
@@ -408,7 +422,7 @@ try:
   if not internet_on ():
     Speak ("Uh oh. No network.", client)
   else:
-    Speak ("Radios online.", client)
+    Speak ("RadiOS online.", client, 10)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
