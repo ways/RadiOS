@@ -2,6 +2,34 @@
 
 A basic internet radio, made to look good and make you want to touch it.
 
+=== Software TODOs ===
+
+High:
+* ScanIO sometimes detect wrong/no connections. Increases under load.
+* Test/Scream if no network/other trouble.
+
+Medium:
+* Add spotify playlists as option on magnets.
+* Hourly time if set.
+* Streamline config, mix with musicbox config?
+* Detect if unable to play stream, and talk about it.
+* Test/merge with musicbox 5 when out of alpha.
+* Allow same-row connections.
+
+Done:
+<strike>
+* Push channels to negative numbers, to allow full volume range.
+* Debug volume troubles, and set sensible defaults.
+* Autostart (init script), with restart on crash.
+* Catch all mpd errors.
+* Install script
+** Install packages
+** Add default config
+** Add script + autostart
+** Set timezone
+</strike>
+
+
 --- Paste from internal wiki: ---
 
 
@@ -130,24 +158,6 @@ We are currently using option 3, no problems so far.
  B  \-E
  C    F
 
-=== Software TODOs ===
-* Add spotify playlists as option on magnets.
-* Scream if no network/other trouble.
-* Hourly time if set.
-* Streamline config, mix with musicbox config?
-* Detect if unable to play stream, and talk about it.
-* Debug volume troubles, and set sensible defaults.
-* Push channels to negative numbers, to allow full volume range.
-* Test/merge with musicbox 5 when out of alpha.
-* <strike>Allow same-row connections.
-* Autostart (init script), with restart on crash.
-* Catch all mpd errors.
-* Install script
-** Install packages
-** Add default config
-** Add script + autostart
-** Set timezone
-</strike>
 
 == Material options ==
 

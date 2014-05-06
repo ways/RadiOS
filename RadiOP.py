@@ -63,7 +63,7 @@ configFile = "/boot/config/config.txt"
 
                      # User configurable
 useVoice = True      # Announce channels
-verbose = True       # Development variables
+verbose = False      # Development variables
 
 
 def ParseConfig ():
@@ -185,7 +185,7 @@ def PlayMPD (c, volume, url):
       SetVolumeMPD (c, v)
       time.sleep (.05)
 
-    time.sleep (5)
+#    time.sleep (5)
     mpdstatus = c.status()
   except mpd.CommandError, e:
     WriteLog ("PlayMPD: Error commanding mpd: " + str(e))
@@ -194,9 +194,9 @@ def PlayMPD (c, volume, url):
     WriteLog ("PlayMPD: Error connecting to MPD:" + str (e), True)
     return False
   
-  if 'play' != mpdstatus['state']:
-    Speak ('Unable to play channel ' + str (nowPlaying) + '?', c) 
-    return False
+#  if 'play' != mpdstatus['state']:
+#    Speak ('Unable to play channel ' + str (nowPlaying) + '?', c) 
+#    return False
 
   return True
 
@@ -220,12 +220,12 @@ def PlayStream (ioVolume, ioChannel, client):
     ") at volume " + str (nowVolume) + "." )
 
   if useVoice:
-    Speak ("Playing " + channelNames[nowPlaying], client, 2)
+    Speak ("Playing " + channelNames[nowPlaying], client)
   nowTimestamp = time.time ()
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
-def Speak (msg, client, volume=1):
+def Speak (msg, client, volume=2):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, volume)
   os.system ('espeak -a ' + str (volume) + ' -s 130 --stdout "' \
@@ -311,12 +311,13 @@ def Compare (client):      # True if we do not need to start something
 
   elif 666 == int (ioVolume[0]): 
     WriteLog ("Shutting down")
-    Speak ("Good bye.", client, 10)
-    Speak ("Good bye.", client, 7)
-    Speak ("Good bye.", client, 5)
-    Speak ("Ouch.", client, 5)
     StopMPD (client)
+    Speak ("Good bye.", client, 5)
+    Speak ("Good bye.", client, 4)
+    Speak ("Good bye.", client, 3)
     os.system("sudo halt")
+    Speak ("Ouch. No no no.", client, 2)
+    time.sleep (10)
     return True
 
   else: # Else check if we're playing correct, and return status
@@ -345,14 +346,14 @@ def ScanIO (ioList):
 
     if 0 > func and GPIO.input(pin):
       ioChan.append ( abs (func) )
-      if verbose:
-        print "Found high pin", pin, "func", func, "while looking for channels"
+#      if verbose:
+#        print "Found high pin", pin, "func", func, "while looking for channels"
 
   # Channel sanity checks
   if 0 == len (ioChan):
     ioChan.append (0)
-    if verbose:
-      print "No channel set."
+#    if verbose:
+#      print "No channel set."
 
   GPIO.cleanup()
 
@@ -376,14 +377,14 @@ def ScanIO (ioList):
 
     if 0 < func and GPIO.input(pin):
       ioVol.append (func)
-      if verbose:
-        print "Found high pin", pin, "func", func, "while looking for volumes"
+#      if verbose:
+#        print "Found high pin", pin, "func", func, "while looking for volumes"
 
   # Volume sanity checks
   if 0 == len (ioVol):
     ioVol.append (0)
-    if verbose:
-      print "No volume set"
+#    if verbose:
+#      print "No volume set"
 
   GPIO.cleanup()
 
@@ -422,14 +423,14 @@ try:
   if not internet_on ():
     Speak ("Uh oh. No network.", client)
   else:
-    Speak ("RadiOS online.", client, 10)
+    Speak ("RadiOS online.", client)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
     if not Compare (client):
       PlayStream (ioVolume, ioChannel, client)
 
-    time.sleep (1)
+    time.sleep (0.2)
 
 except KeyboardInterrupt:
   print "Shutting down cleanly ... (Ctrl + C)"
