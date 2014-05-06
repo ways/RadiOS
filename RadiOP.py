@@ -277,7 +277,7 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #20
       0,
      10,  #22
-     -5,  #23
+     -4,  #23
      -3,  #24
      -2,  #25
       0,
