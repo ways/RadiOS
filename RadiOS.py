@@ -67,6 +67,15 @@ verbose = False      # Development variables
 speakTime = False
 
 
+def FindSSID (client):
+  config=''
+  #grep ssid /etc/wpa.conf |cut -d'"' -f2
+  with open ('/etc/wpa.conf', 'r') as myfile:
+    config=myfile.read()
+
+  return config.split('"')[1]
+
+
 def ParseConfig ():
   section = 'Channels'
   channelnames = ['noop']
@@ -421,10 +430,12 @@ ConnectMPD (client)
 GPIO.setmode (GPIO.BCM) #Use GPIO numbers
 
 try:
+  ssid=FindSSID (client)
+
   if not internet_on ():
-    Speak ("Uh oh. No network.", client)
+    Speak ("Problems with network " + ssid + ".", client)
   else:
-    Speak ("RadiOS online.", client)
+    Speak ("RadiOS online using " + ssid + ".", client)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)

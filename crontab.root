@@ -1,1 +1,1 @@
-@reboot while :; do /root/RadiOP/RadiOP.py > /tmp/RadiOP.log 2>&1; done
+@reboot while :; do /root/RadiOS/RadiOS.py > /tmp/RadiOS.log 2>&1; done
