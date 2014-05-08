@@ -122,7 +122,7 @@ def WriteLog (msg, error = False):
 def ConnectMPD (c):
   try:
     c.connect (mpdhost, 6600)
-    #c.crossfade (5)
+    #c.crossfade (5) #not implemented in mopidy
   except mpd.ConnectionError():
     WriteLog ("Error connecting to MPD", True)
     return False
@@ -303,6 +303,8 @@ def PopulateTables ():   # Set up mapping from IO to function
 def Compare (client):      # True if we do not need to start something
   global nowPlaying, speakTime, nowTimestamp
 
+  client.ping ()
+
   # If unplugged, but playing
   if 0 == ioChannel[0] and nowPlaying:
     WriteLog ("Stopping MPD due to nowPlaying " + \
@@ -433,9 +435,9 @@ try:
   ssid=FindSSID (client)
 
   if not internet_on ():
-    Speak ("Problems with network " + ssid + ".", client)
+    Speak ("Unable to connect to network " + ssid + ".", client)
   else:
-    Speak ("RadiOS online using " + ssid + ".", client)
+    Speak ("RadiOS online using nettwork " + ssid + ".", client)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
@@ -448,5 +450,5 @@ except KeyboardInterrupt:
   print "Shutting down cleanly ... (Ctrl + C)"
 
 finally:
-  DisconnectMPD (client)
+  #DisconnectMPD (client)
   GPIO.cleanup()

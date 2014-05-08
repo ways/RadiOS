@@ -6,6 +6,7 @@ A basic internet radio, made to look good and make you want to touch it.
 
 High:
 * ScanIO sometimes detect wrong/no connections. Increases under load.
+* Fix/workaround python-mpd2 lib disconnects/timeouts.
 
 Medium:
 * Add spotify playlists as option on magnets.
