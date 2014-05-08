@@ -16,9 +16,10 @@
 
 
 # Main part of RadiOP
-# Requires apt-get install python-mpd python-rpi.gpio
+# Requires apt-get install python-rpi.gpio
 # Requires pip install python-mpd2 ( http://pythonhosted.org/python-mpd2/topics/commands.html )
-# Can use espeak mpd
+# Can use espeak
+# For development git-core rsync emacs23-nox
 #
 # Pseudo code:
 # * load user configs
@@ -44,6 +45,7 @@
 import time, syslog, ConfigParser, io, sys, os, mpd, urllib2
 import RPi.GPIO as GPIO
 
+configFile = "/boot/config/settings.ini"
 mpdhost = 'localhost'
 client = mpd.MPDClient () # Connection to mpd
 
@@ -58,12 +60,11 @@ prevVolume = 0
 muted = False
 ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
-speakTime = False
-configFile = "/boot/config/config.txt"
 
                      # User configurable
 useVoice = True      # Announce channels
 verbose = False      # Development variables
+speakTime = False
 
 
 def ParseConfig ():
