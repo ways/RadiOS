@@ -42,11 +42,12 @@
 # 5       | 10
 # 6       | 5
 
-import time, syslog, ConfigParser, io, sys, os, mpd, urllib2
+import time, syslog, ConfigParser, io, sys, os, mpd, urllib2, socket
 import RPi.GPIO as GPIO
 
 configFile = "/boot/config/settings.ini"
 mpdhost = 'localhost'
+inethost = 'nrk.no' # For testing internet
 client = mpd.MPDClient () # Connection to mpd
 
 ioList = None        # Map GPIO to function
@@ -324,6 +325,9 @@ def Compare (client):      # True if we do not need to start something
   elif 666 == int (ioVolume[0]): 
     WriteLog ("Shutting down")
     StopMPD (client)
+
+    Speak ("I'm at IP " + GetIP (), 5)
+    
     Speak ("Good bye.", client, 5)
     Speak ("Good bye.", client, 4)
     Speak ("Good bye.", client, 3)
@@ -417,12 +421,19 @@ def ScanIO (ioList):
   return (ioVol, ioChan)
 
 
-def internet_on():
+def TestConnection ():
   try:
-    response = urllib2.urlopen ('http://nrk.no/', timeout=2)
+    response = urllib2.urlopen ('http://' + inethost, timeout=2)
     return True
   except urllib2.URLError as err: pass
   return False
+
+
+def GetIP ():
+  with s = socket.socket (socket.AF_INET, socket.SOCK_DGRAM):
+    s.connect ( (inethost,80) )
+    return s.getsockname()[0]
+    #s.close()
 
 
 # Main
@@ -434,10 +445,11 @@ GPIO.setmode (GPIO.BCM) #Use GPIO numbers
 try:
   ssid=FindSSID (client)
 
-  if not internet_on ():
+  if not TestConnection ():
     Speak ("Unable to connect to network " + ssid + ".", client)
   else:
-    Speak ("RadiOS online using nettwork " + ssid + ".", client)
+    StopMPD (client)
+    Speak ("RadiOS online using nettwork " + ssid + ".", client, 2)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
