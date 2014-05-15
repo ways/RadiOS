@@ -430,7 +430,7 @@ def TestConnection ():
 
 
 def GetIP ():
-  with s = socket.socket (socket.AF_INET, socket.SOCK_DGRAM):
+  with socket.socket (socket.AF_INET, socket.SOCK_DGRAM) as s:
     s.connect ( (inethost,80) )
     return s.getsockname()[0]
     #s.close()
@@ -449,7 +449,7 @@ try:
     Speak ("Unable to connect to network " + ssid + ".", client)
   else:
     StopMPD (client)
-    Speak ("RadiOS online using nettwork " + ssid + ".", client, 2)
+    Speak ("RadiOS online using nettwork " + ssid + ".", client)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
