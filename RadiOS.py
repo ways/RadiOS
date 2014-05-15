@@ -170,7 +170,7 @@ def SetVolumeMPD (c, vol):
   nowVolume = vol
 
   try:
-    c.setvol (int (vol))
+    c.setvol (vol)
     #os.system ('amixer cget numid=5 ')
     #os.system ('amixer cset numid=5 --quiet -- ' + str(vol) + '%')
   except mpd.ConnectionError():
@@ -326,7 +326,7 @@ def Compare (client):      # True if we do not need to start something
     WriteLog ("Shutting down")
     StopMPD (client)
 
-    Speak ("I'm at IP " + GetIP (), 5)
+    Speak ("I'm at I P " + GetIP (), client, 5)
     
     Speak ("Good bye.", client, 5)
     Speak ("Good bye.", client, 4)
@@ -430,10 +430,12 @@ def TestConnection ():
 
 
 def GetIP ():
-  with socket.socket (socket.AF_INET, socket.SOCK_DGRAM) as s:
-    s.connect ( (inethost,80) )
-    return s.getsockname()[0]
-    #s.close()
+  ip = 'unknown'
+  s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  s.connect ( (inethost,80) )
+  ip = s.getsockname()[0]
+  s.close()
+  return ip
 
 
 # Main
