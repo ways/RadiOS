@@ -1,0 +1,14 @@
+Less interessting list of cable layout on:
+
+* prototype:
+
+vo?	v30
+c1	v5
+c6	v1
+c7	v40
+c3	v10
+c2	v0
+c5	v20
+c4
+
+* radios01:

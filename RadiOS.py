@@ -117,6 +117,8 @@ def WriteLog (msg, error = False):
   severity = syslog.LOG_INFO
   if error:
     severity = syslog.LOG_ERR
+  if verbose:
+    print severity, msg
   syslog.syslog (severity, msg)
 
 
@@ -324,17 +326,18 @@ def Compare (client):      # True if we do not need to start something
   #  return True
 
   elif 666 == int (ioVolume[0]): 
-    WriteLog ("Shutting down")
+    WriteLog ("Placeholder")
     StopMPD (client)
 
-    Speak ("I'm at I P " + GetIP (), client, 5)
+    #Speak ("I'm at I P " + GetIP (), client, 5)
     
-    Speak ("Good bye.", client, 5)
-    Speak ("Good bye.", client, 4)
-    Speak ("Good bye.", client, 3)
-    os.system("sudo halt")
-    Speak ("Ouch. No no no.", client, 2)
-    time.sleep (10)
+    #Speak ("Good bye.", client, 5)
+    #Speak ("Good bye.", client, 4)
+    #Speak ("Good bye.", client, 3)
+    #os.system("sudo halt")
+    #Speak ("Ouch. No no no.", client, 2)
+    #time.sleep (10)
+    Speak ("Muted")
     return True
 
   else: # Else check if we're playing correct, and return status
