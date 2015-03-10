@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2014 Lars Falk-Petersen
+# Copyright 2014-2015 Lars Falk-Petersen
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -63,8 +63,8 @@ ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
 
                      # User configurable
-useVoice = True      # Announce channels
-verbose = False      # Development variables
+useVoice = False      # Announce channels
+verbose = True       # Development variables
 speakTime = False
 
 
@@ -180,10 +180,10 @@ def SetVolumeMPD (c, vol):
 
 
 def PlayMPD (c, volume, url):
-  start = 1
-  step = 1
-  if 10 < volume:
-    step = 10
+#  start = 1
+#  step = 1
+#  if 10 < volume:
+#    step = 10
 
   try:
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
@@ -192,9 +192,10 @@ def PlayMPD (c, volume, url):
     SetVolumeMPD (c, 0)
     c.play ()
 
-    for v in range (start, volume + step, step):
-      SetVolumeMPD (c, v)
-      time.sleep (.05)
+#    for v in range (start, volume + step, step):
+#      SetVolumeMPD (c, v)
+#      time.sleep (.05)
+    SetVolumeMPD (c, volume)
 
 #    time.sleep (5)
     mpdstatus = c.status()
