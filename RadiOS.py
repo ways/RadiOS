@@ -45,7 +45,10 @@
 import time, syslog, ConfigParser, io, sys, os, mpd, urllib2, socket
 import RPi.GPIO as GPIO
 
-configFile = "/boot/config/settings.ini"
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+
+configFile = "/boot/config/radios.ini"
 mpdhost = 'localhost'
 inethost = 'nrk.no' # For testing internet
 client = mpd.MPDClient () # Connection to mpd
@@ -63,8 +66,8 @@ ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
 
                      # User configurable
-useVoice = False      # Announce channels
-verbose = True       # Development variables
+useVoice  = True     # Announce channels
+verbose   = True     # Development variables
 speakTime = False
 
 
@@ -226,7 +229,7 @@ def PlayStream (ioVolume, ioChannel, client):
   if 0 == nowPlaying:
     return False
   elif len (channelNames) <= nowPlaying:  # We don't have that many channels
-    Speak ("Channel " + str(nowPlaying) + " is not configured.", client)
+    Speak ("Kanal " + str(nowPlaying) + " er ikke konfigurert.", client)
     return False
     
   WriteLog ("Will play channel " + str (nowPlaying) + \
@@ -234,16 +237,16 @@ def PlayStream (ioVolume, ioChannel, client):
     ") at volume " + str (nowVolume) + "." )
 
   if useVoice:
-    Speak ("Playing " + channelNames[nowPlaying], client)
+    Speak ("Spiller " + channelNames[nowPlaying], client)
   nowTimestamp = time.time ()
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
-def Speak (msg, client, volume=2):
+def Speak (msg, client, volume=4):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, volume)
-  os.system ('espeak -a ' + str (volume) + ' -s 130 --stdout "' \
-    + msg + '" | aplay --quiet')
+  os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (volume) + ' -s 170 --stdout "' \
+    + msg + '" | /usr/bin/aplay -D plughw:1,0 --quiet')
 
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
@@ -278,7 +281,7 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #7 95
      -1,  #8
     666,  #9
-     20,  #10
+     10,  #10
      30,  #11
       0,  #12
       0,  #13
@@ -290,12 +293,12 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #19
       0,  #20
       0,
-     10,  #22
+      5,  #22
      -4,  #23
      -3,  #24
      -2,  #25
-      0,
-      5   #27
+      0,  #26 This pin seems to not work?
+      2   #27
   ]
 
   if verbose:
@@ -337,7 +340,6 @@ def Compare (client):      # True if we do not need to start something
     #os.system("sudo halt")
     #Speak ("Ouch. No no no.", client, 2)
     #time.sleep (10)
-    Speak ("Muted")
     return True
 
   else: # Else check if we're playing correct, and return status
@@ -346,6 +348,9 @@ def Compare (client):      # True if we do not need to start something
 
 
 def ScanIO (ioList):
+#  if verbose:
+#    print "scanio"
+
   ioVol = list ()
   ioChan = list ()
 
@@ -366,16 +371,14 @@ def ScanIO (ioList):
 
     if 0 > func and GPIO.input(pin):
       ioChan.append ( abs (func) )
-#      if verbose:
-#        print "Found high pin", pin, "func", func, "while looking for channels"
+      if verbose:
+        print "Found high pin", pin, "func", func, "while looking for channels"
 
   # Channel sanity checks
   if 0 == len (ioChan):
     ioChan.append (0)
 #    if verbose:
 #      print "No channel set."
-
-  GPIO.cleanup()
 
   # Now we turn it around
   # Set up for volume
@@ -397,16 +400,14 @@ def ScanIO (ioList):
 
     if 0 < func and GPIO.input(pin):
       ioVol.append (func)
-#      if verbose:
-#        print "Found high pin", pin, "func", func, "while looking for volumes"
+      if verbose:
+        print "Found high pin", pin, "func", func, "while looking for volumes"
 
   # Volume sanity checks
   if 0 == len (ioVol):
     ioVol.append (0)
-#    if verbose:
-#      print "No volume set"
-
-  GPIO.cleanup()
+    if verbose:
+      print "No volume set"
 
   # Check for same-row connections.
   # TODO: Currently disabled.
@@ -452,10 +453,10 @@ try:
   ssid=FindSSID (client)
 
   if not TestConnection ():
-    Speak ("Unable to connect to network " + ssid + ".", client)
+    Speak ("Kan ikke koble til nettverket " + ssid + ".", client)
   else:
     StopMPD (client)
-    Speak ("RadiOS online using nettwork " + ssid + ".", client)
+    Speak ("Koblet til nettverket " + ssid + ".", client)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
