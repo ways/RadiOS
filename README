@@ -6,14 +6,16 @@ A basic internet radio, made to look good and make you want to touch it.
 === Software TODOs ===
 
 Hight:
-* Convert to volumio.
-* Use favorites from volumio config.
+* Test with Volumio
 
 Medium:
 * Add spotify playlists as option.
 * Detect if unable to play stream, and talk about it.
+* Readd check for network name.
+* Readd espeak.
 
 Low:
+* Retest fading in/out on changes.
 * Allow same-row connections.
 * Hourly time if set.
 
