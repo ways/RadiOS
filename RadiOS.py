@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2014-2015 Lars Falk-Petersen
+# Copyright 2014-2017 Lars Falk-Petersen <dev@falkp.no>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -16,9 +16,8 @@
 
 
 # Main part of RadiOP
-# Requires apt-get install python-rpi.gpio
-# Can use espeak
-# For development git-core rsync emacs23-nox
+#
+# See install.sh for requirements
 #
 # Pseudo code:
 # * load user configs
@@ -41,13 +40,12 @@
 # 5       | 10
 # 6       | 5
 
-import time, syslog, ConfigParser, io, sys, os, urllib2, socket, mpd
-import RPi.GPIO as GPIO
+import time, syslog, io, sys, os, urllib2, socket, mpd, json, RPi.GPIO as GPIO
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 
-configFile = "/boot/config/radios.ini"
+configFile = '/data/favourites/my-web-radio'
 mpdhost = 'localhost'
 inethost = 'nrk.no' # For testing internet
 client = mpd.MPDClient () # Connection to mpd
@@ -65,50 +63,49 @@ ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
 
                      # User configurable
-useVoice  = True     # Announce channels
+useVoice  = False    # Announce channels
 verbose   = True     # Development variables
 speakTime = False
 
 
 def FindSSID (client):
-  config=''
-  #grep ssid /etc/wpa.conf |cut -d'"' -f2
-  with open ('/etc/wpa.conf', 'r') as myfile:
-    config=myfile.read()
-
-  return config.split('"')[1]
+  #TODO: Look up which network we're connected to
+  return 'kabel' # 'wired'
 
 
 def ParseConfig ():
   section = 'Channels'
   channelnames = ['noop']
   channelurls = ['noop']
+  config = None
 
   try:
-    config = ConfigParser.RawConfigParser (allow_no_value=True)
-    config.read (configFile)
 
-    for i in range (1, 9):
-      channelnames.append (config.get (section, 'channel' \
-        + str (i) + '_name'))
-      channelurls.append (config.get (section, 'channel' + \
-        str (i) + '_url'))
-      if verbose:
-        print "Added "+ str(i) + " - " \
-          + str(config.get (section, 'channel' + str (i) + '_name'))
+    # Read config file
+    with open(configFile) as data_file:    
+      config = json.load(data_file)
 
-  except ConfigParser.NoOptionError, e:
-    WriteLog ("Error in config file " + configFile + ". Error: " \
-      + str (e), True)
+    if verbose:
+      print "Read config file:"
+      from pprint import pprint
+      pprint(config)
 
-  except ConfigParser.Error:
+    # Parse favorites into channels
+
+    for channel in config:
+      print "channel: "
+      pprint (channel)
+      channelnames.append (channel['name'])
+      channelurls.append (channel['uri'])
+
+  except IOError:
     print "Error reading config file " + configFile
     WriteLog ("Error reading config file " + configFile, True)
     sys.exit (1)
 
   if verbose:
-    print channelnames
-    print channelurls
+    print 'channelnames', channelnames
+    print 'channelurls', channelurls
   else:
     WriteLog ( "Read channels from config: " + str (channelnames))
 
@@ -244,8 +241,9 @@ def PlayStream (ioVolume, ioChannel, client):
 def Speak (msg, client, volume=4):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, volume)
-  os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (volume) + ' -s 170 --stdout "' \
-    + msg + '" | /usr/bin/aplay -D plughw:1,0 --quiet')
+  if useVoice:
+    os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (volume) + ' -s 170 --stdout "' \
+      + msg + '" | /usr/bin/aplay -D plughw:1,0 --quiet')
 
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
@@ -334,11 +332,7 @@ def Compare (client):      # True if we do not need to start something
     #Speak ("I'm at I P " + GetIP (), client, 5)
     
     #Speak ("Good bye.", client, 5)
-    #Speak ("Good bye.", client, 4)
-    #Speak ("Good bye.", client, 3)
     #os.system("sudo halt")
-    #Speak ("Ouch. No no no.", client, 2)
-    #time.sleep (10)
     return True
 
   else: # Else check if we're playing correct, and return status

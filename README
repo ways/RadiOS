@@ -5,23 +5,19 @@ A basic internet radio, made to look good and make you want to touch it.
 
 === Software TODOs ===
 
-High:
-* ScanIO sometimes detect wrong/no connections. Increases under load.
-* Fix/workaround python-mpd2 lib disconnects/timeouts.
+Hight:
+* Convert to volumio.
+* Use favorites from volumio config.
 
 Medium:
-* Add spotify playlists as option on magnets.
+* Add spotify playlists as option.
 * Detect if unable to play stream, and talk about it.
-* Test/merge with musicbox 5 when out of alpha.
-* Use radio channels from musicbox if possible?
-* Allow same-row connections.
 
 Low:
+* Allow same-row connections.
 * Hourly time if set.
 
 Done:
-* Streamline config, mix with musicbox config?
-* Test/scream if no network.
 * Push channels to negative numbers, to allow full volume range.
 * Debug volume troubles, and set sensible defaults.
 * Autostart (init script), with restart on crash.
@@ -30,7 +26,6 @@ Done:
 ** Install packages
 ** Add default config
 ** Add script + autostart
-** Set timezone
 
 
 --- Paste from internal wiki: ---
