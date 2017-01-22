@@ -17,7 +17,6 @@
 
 # Main part of RadiOP
 # Requires apt-get install python-rpi.gpio
-# Requires pip install python-mpd2 ( http://pythonhosted.org/python-mpd2/topics/commands.html )
 # Can use espeak
 # For development git-core rsync emacs23-nox
 #
@@ -42,7 +41,7 @@
 # 5       | 10
 # 6       | 5
 
-import time, syslog, ConfigParser, io, sys, os, mpd, urllib2, socket
+import time, syslog, ConfigParser, io, sys, os, urllib2, socket, mpd
 import RPi.GPIO as GPIO
 
 GPIO.setwarnings(False)

@@ -1,10 +1,16 @@
 #!/bin/bash
 
-# Install RadiOS on already installed musicbox.
-dir=/root/RadiOS/
+# Install RadiOS on already installed volumio.
 
-cat "${dir}settings.ini" >> /boot/config/settings.ini
-crontab < "${dir}crontab.root"
+#dir=/volumio/RadiOS/
 
-apt-get install python-rpi.gpio espeak
-pip install python-mpd2
+#cat "${dir}settings.ini" >> /boot/config/settings.ini
+#crontab < "${dir}crontab.root"
+
+sudo apt update
+sudo apt-get install python-pip python-dev vim-nox screen
+sudo pip install python-mpd2 RPi.GPIO
+
+# Add favorits to /data/favourites/my-web-radio
+cp my-web-radio /data/favourites/my-web-radio
+

@@ -1,0 +1,12 @@
+[
+  {
+    "service": "webradio",
+    "name": "Secret agent",
+    "uri": "http://ice1.somafm.com/secretagent-128-aac"
+  },
+  {
+    "service": "webradio",
+    "name": "NRK Alltid Nyheter",
+    "uri": "http://lyd.nrk.no:80/nrk_radio_alltid_nyheter_aac_h"
+  }
+]
