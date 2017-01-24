@@ -19,26 +19,6 @@
 #
 # See install.sh for requirements
 #
-# Pseudo code:
-# * load user configs
-# * feel input
-#  * no input -> stop music
-#  * check if we're playing what's selected
-#   * check if volume's right
-#    * if no -> set volume
-#   * if no -> play selected
-#   * if no network -> warn user
-#   * if no channels set -> warn user
-#
-# Our physical input looks something like this:
-#
-# channel | volume
-# 1       | 50
-# 2       | 40
-# 3       | 30
-# 4       | 20
-# 5       | 10
-# 6       | 5
 
 import time, syslog, io, sys, os, urllib2, socket, mpd, json, RPi.GPIO as GPIO
 
@@ -248,54 +228,36 @@ def Speak (msg, client, volume=4):
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
 # Function: volumes are positive, channels negative. 0 is noop.
-# 2  | volume 100
-# 3  | volume 90
-# 4  | volume 80
-# 17 | volume 70
-# 27 | volume 60
-# 22 | volume 50
-# 10 | volume 40
-# 9  | volume 30
-
-# 11 | channel 1
-# 14 | channel 2
-# 15 | channel 3
-# 18 | channel 4
-# 23 | channel 5
-# 24 | channel 6
-# 25 | channel 7
-# 08 | channel 8
-# 07 | channel 9
 
   ioList = [
       0,  #0 Doesn't exist
       0,  #1 Doesn't exist on Raspi rev2 and later
       0,  #2 This pin gives false positives
       0,  #3 This pin gives false positives
-     40,  #4
+     -1,  #4
       0,  #5
       0,  #6
-      0,  #7 95
-     -1,  #8
-    666,  #9
-     10,  #10
-     30,  #11
+     30,  #7
+     40,  #8
+     -6,  #9
+     -5,  #10
+     -7,  #11
       0,  #12
       0,  #13
-     -7,  #14
-     -6,  #15
+    100,  #14
+     90,  #15
       0,  #16
-      1,  #17
-     -5,  #18
+     -2,  #17
+     80,  #18
       0,  #19
       0,  #20
       0,
-      5,  #22
-     -4,  #23
-     -3,  #24
-     -2,  #25
+     -4,  #22
+     70,  #23
+     60,  #24
+     50,  #25
       0,  #26 This pin seems to not work?
-      2   #27
+     -3   #27
   ]
 
   if verbose:
@@ -460,6 +422,11 @@ try:
 
 except KeyboardInterrupt:
   print "Shutting down cleanly ... (Ctrl + C)"
+except socket.error:
+  print "socket.error MPD stopped?"
+except mpd.ConnectionError:
+  print "mpd.ConnectionError: MPD stopped?"
+
 
 finally:
   #DisconnectMPD (client)
