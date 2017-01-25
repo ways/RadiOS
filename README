@@ -13,6 +13,7 @@ Medium:
 * Detect if unable to play stream, and talk about it.
 * Readd check for network name.
 * Readd espeak.
+* Split out hardware map file
 
 Low:
 * Retest fading in/out on changes.
