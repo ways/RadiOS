@@ -1,0 +1,1 @@
+Copy service file to /etc/systemd/system/radios.service and run sudo systemctl enable radios.service

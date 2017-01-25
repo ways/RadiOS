@@ -44,7 +44,7 @@ ioVolume = None      # Current volumes selected
 
                      # User configurable
 useVoice  = False    # Announce channels
-verbose   = True     # Development variables
+verbose   = False    # Development variables
 speakTime = False
 
 

@@ -1,0 +1,9 @@
+[Unit]
+Description=Start RadiOS
+
+[Service]
+Type=oneshot
+ExecStart=/home/volumio/RadiOS/RadiOS.py > /tmp/radios.log
+
+[Install]
+WantedBy=multi-user.target
