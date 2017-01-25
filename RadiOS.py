@@ -73,8 +73,6 @@ def ParseConfig ():
     # Parse favorites into channels
 
     for channel in config:
-      print "channel: "
-      pprint (channel)
       channelnames.append (channel['name'])
       channelurls.append (channel['uri'])
 
