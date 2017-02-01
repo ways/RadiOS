@@ -8,5 +8,30 @@
     "service": "webradio",
     "name": "NRK Alltid Nyheter",
     "uri": "http://lyd.nrk.no:80/nrk_radio_alltid_nyheter_aac_h"
+  },
+  {
+    "service": "webradio",
+    "name": "Radioresepsjonen",
+    "uri": "http://lyd.nrk.no:80/nrk_radio_p3_radioresepsjonen_mp3_h"
+  },
+  {
+    "service": "webradio",
+    "name": "NRK Jazz",
+    "uri": "http://lyd.nrk.no:80/nrk_radio_jazz_mp3_h"
+  },
+  {
+    "service": "webradio",
+    "name": "NRK P3",
+    "uri": "http://lyd.nrk.no/nrk_radio_p3_mp3_h"
+  },
+  {
+    "service": "webradio",
+    "name": "Jazzabit",
+    "uri": "http://213.158.233.199:2042/"
+  },
+  {
+    "service": "webradio",
+    "name": "NRK P13",
+    "uri": "http://lyd.nrk.no:80/nrk_radio_p13_aac_h"
   }
 ]
