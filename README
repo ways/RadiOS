@@ -5,15 +5,13 @@ A basic internet radio, made to look good and make you want to touch it.
 
 === Software TODOs ===
 
-Hight:
-* Test with Volumio
-
 Medium:
+* Readd espeak.
 * Add spotify playlists as option.
 * Detect if unable to play stream, and talk about it.
 * Readd check for network name.
-* Readd espeak.
 * Split out hardware map file
+* Watch favorites-list and reload if changed?
 
 Low:
 * Retest fading in/out on changes.
