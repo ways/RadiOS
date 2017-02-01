@@ -7,12 +7,9 @@ dir=/home/volumio/RadiOS/
 
 cd ${dir} || { echo "Error, check dir"; exit 1; }
 
-# Install crontab
-sudo crontab < "${dir}crontab.root"
-
 # Install packages
 sudo apt update
-sudo apt-get install python-pip python-dev vim-nox screen
+sudo apt-get install -f python-pip python-dev vim-nox screen
 sudo pip install python-mpd2 RPi.GPIO
 
 # Set up access to gpio for user (see also root crontab)
@@ -21,3 +18,6 @@ sudo adduser volumio gpio
 # Add favorits to /data/favourites/my-web-radio
 cp my-web-radio /data/favourites/my-web-radio
 
+# Enable on startup
+sudo cp systemd/radios.service /etc/systemd/system/
+sudo systemctl enable radios.service
