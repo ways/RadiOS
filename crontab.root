@@ -1,2 +1,0 @@
-@reboot chown root.gpio /dev/gpiomem; chmod g+rw /dev/gpiomem; while :; do /home/volumio/RadiOS/RadiOS.py > /tmp/RadiOS.log 2>&1; done
-
