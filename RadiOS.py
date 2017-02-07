@@ -21,9 +21,14 @@
 #
 
 import time, syslog, io, sys, os, urllib2, socket, mpd, json, RPi.GPIO as GPIO
+from wireless import Wireless
 
+# Init GPIO
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
+
+# Init wireless
+wireless = Wireless()
 
 configFile = '/data/favourites/my-web-radio'
 mpdhost = 'localhost'
@@ -43,14 +48,18 @@ ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
 
                      # User configurable
-useVoice  = False    # Announce channels
+useVoice  = True     # Announce channels
 verbose   = False    # Development variables
 speakTime = False
 
 
 def FindSSID (client):
-  #TODO: Look up which network we're connected to
-  return 'kabel' # 'wired'
+  current = wireless.current()
+
+  if current:
+    return current
+  else:
+    return 'kabel' # 'wired'
 
 
 def ParseConfig ():
@@ -102,12 +111,10 @@ def WriteLog (msg, error = False):
 def ConnectMPD (c):
   try:
     c.connect (mpdhost, 6600)
-    #c.crossfade (5) #not implemented in mopidy
   except mpd.ConnectionError():
     WriteLog ("Error connecting to MPD", True)
     return False
   
-  #WriteLog ("Connected to MPD version " + c.mpd_version)
   return True
 
 
@@ -119,12 +126,6 @@ def DisconnectMPD (c):
 
 
 def StopMPD (c):
-#  step = -10
-#  volume = nowVolume
-#  for v in range (nowVolume, 0, step):
-#    SetVolumeMPD (c, v)
-#    time.sleep (.1)
-
   WriteLog ("Stopping MPD")
   try:
     c.clear ()
@@ -150,8 +151,6 @@ def SetVolumeMPD (c, vol):
 
   try:
     c.setvol (vol)
-    #os.system ('amixer cget numid=5 ')
-    #os.system ('amixer cset numid=5 --quiet -- ' + str(vol) + '%')
   except mpd.ConnectionError():
     WriteLog('MPD error setting volume.')
     return False
@@ -159,11 +158,6 @@ def SetVolumeMPD (c, vol):
 
 
 def PlayMPD (c, volume, url):
-#  start = 1
-#  step = 1
-#  if 10 < volume:
-#    step = 10
-
   try:
     WriteLog ("Playing " + url + " at volume " + str (volume) + ".")
     c.clear ()
@@ -171,12 +165,8 @@ def PlayMPD (c, volume, url):
     SetVolumeMPD (c, 0)
     c.play ()
 
-#    for v in range (start, volume + step, step):
-#      SetVolumeMPD (c, v)
-#      time.sleep (.05)
     SetVolumeMPD (c, volume)
 
-#    time.sleep (5)
     mpdstatus = c.status()
   except mpd.CommandError, e:
     WriteLog ("PlayMPD: Error commanding mpd: " + str(e))
@@ -184,10 +174,6 @@ def PlayMPD (c, volume, url):
   except mpd.ConnectionError, e:
     WriteLog ("PlayMPD: Error connecting to MPD:" + str (e), True)
     return False
-  
-#  if 'play' != mpdstatus['state']:
-#    Speak ('Unable to play channel ' + str (nowPlaying) + '?', c) 
-#    return False
 
   return True
 
@@ -211,17 +197,18 @@ def PlayStream (ioVolume, ioChannel, client):
     ") at volume " + str (nowVolume) + "." )
 
   if useVoice:
-    Speak ("Spiller " + channelNames[nowPlaying], client)
+    Speak (channelNames[nowPlaying], client, nowVolume)
   nowTimestamp = time.time ()
   return PlayMPD (client, nowVolume, channelUrls[nowPlaying])
 
 
-def Speak (msg, client, volume=4):
+def Speak (msg, client, volume=10):
+  _volume = volume + 5
   WriteLog ('Saying . o O (' + msg + ')')
-  SetVolumeMPD (client, volume)
+  SetVolumeMPD (client, _volume)
   if useVoice:
-    os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (volume) + ' -s 170 --stdout "' \
-      + msg + '" | /usr/bin/aplay -D plughw:1,0 --quiet')
+    os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (_volume) + ' -s 170 --stdout "' \
+      + msg + '" | /usr/bin/aplay -D plughw:5,0 --quiet')
 
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
@@ -236,24 +223,24 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #5
       0,  #6
      30,  #7
-      2,  #8
+      3,  #8
      -6,  #9
      -5,  #10
      -7,  #11
       0,  #12
       0,  #13
-     10,  #14
+     40,  #14
       8,  #15
       0,  #16
      -2,  #17
-      6,  #18
+     30,  #18
       0,  #19
       0,  #20
       0,  #21
      -4,  #22
-      5,  #23
-      4,  #24
-      3,  #25
+     20,  #23
+      7,  #24
+      5,  #25
       0,  #26 This pin seems to not work?
      -3   #27
   ]
@@ -277,22 +264,10 @@ def Compare (client):      # True if we do not need to start something
     StopMPD (client)
     return True
 
-  #elif -40 == int (ioChannel[0]): #Hourly speakTime
-  #  if not speakTime:
-  #    WriteLog ("Activating speakTime")
-  #    Speak ("Time is now " + time.strftime("%H:%M"), client, 80)
-
-  #    speakTime = True
-  #  return True
-
   elif 666 == int (ioVolume[0]): 
     WriteLog ("Placeholder")
     StopMPD (client)
 
-    #Speak ("I'm at I P " + GetIP (), client, 5)
-    
-    #Speak ("Good bye.", client, 5)
-    #os.system("sudo halt")
     return True
 
   else: # Else check if we're playing correct, and return status
@@ -301,9 +276,6 @@ def Compare (client):      # True if we do not need to start something
 
 
 def ScanIO (ioList):
-#  if verbose:
-#    print "scanio"
-
   ioVol = list ()
   ioChan = list ()
 
@@ -361,21 +333,6 @@ def ScanIO (ioList):
     ioVol.append (0)
     if verbose:
       print "No volume set"
-
-  # Check for same-row connections.
-  # TODO: Currently disabled.
-  #if 0 == ioVol[0] and -1 == ioChan[0]:
-  #  pinout = 4
-  #  pinin = 7
-
-  #  GPIO.setup (pinin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-  #  GPIO.setup (pinout, GPIO.OUT, initial=GPIO.HIGH)
-
-  #  if GPIO.input(pinin):
-  #    ioChan[0] = -40
-
-  #  GPIO.cleanup()
-
   return (ioVol, ioChan)
 
 
@@ -397,6 +354,7 @@ def GetIP ():
 
 
 # Main
+
 channelNames, channelUrls = ParseConfig ()
 ioList = PopulateTables ()
 ConnectMPD (client)
@@ -409,7 +367,7 @@ try:
     Speak ("Kan ikke koble til nettverket " + ssid + ".", client)
   else:
     StopMPD (client)
-    Speak ("Koblet til nettverket " + ssid + ".", client)
+    Speak ("Nettverk " + ssid + ".", client)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
@@ -425,7 +383,7 @@ except socket.error:
 except mpd.ConnectionError:
   print "mpd.ConnectionError: MPD stopped?"
 
-
 finally:
   #DisconnectMPD (client)
   GPIO.cleanup()
+

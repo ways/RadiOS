@@ -9,8 +9,8 @@ cd ${dir} || { echo "Error, check dir"; exit 1; }
 
 # Install packages
 sudo apt update
-sudo apt-get install -f python-pip python-dev vim-nox screen
-sudo pip install python-mpd2 RPi.GPIO
+sudo apt-get install -f python-pip python-dev vim-nox screen espeak
+sudo pip install python-mpd2 RPi.GPIO wireless
 
 # Set up access to gpio for user (see also root crontab)
 sudo adduser volumio gpio
