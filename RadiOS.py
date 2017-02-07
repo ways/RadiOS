@@ -228,7 +228,7 @@ def PopulateTables ():   # Set up mapping from IO to function
 # Function: volumes are positive, channels negative. 0 is noop.
 
   ioList = [
-      0,  #0 Doesn't exist
+      0,  #0 Doesn't exist?
       0,  #1 Doesn't exist on Raspi rev2 and later
       0,  #2 This pin gives false positives
       0,  #3 This pin gives false positives
@@ -236,24 +236,24 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #5
       0,  #6
      30,  #7
-     40,  #8
+      2,  #8
      -6,  #9
      -5,  #10
      -7,  #11
       0,  #12
       0,  #13
-    100,  #14
-     90,  #15
+     10,  #14
+      8,  #15
       0,  #16
      -2,  #17
-     80,  #18
+      6,  #18
       0,  #19
       0,  #20
-      0,
+      0,  #21
      -4,  #22
-     70,  #23
-     60,  #24
-     50,  #25
+      5,  #23
+      4,  #24
+      3,  #25
       0,  #26 This pin seems to not work?
      -3   #27
   ]
