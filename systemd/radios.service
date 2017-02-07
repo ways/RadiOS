@@ -1,9 +1,12 @@
 [Unit]
 Description=Start RadiOS
+After=syslog.target network.target
 
 [Service]
-Type=oneshot
-ExecStart=/home/volumio/RadiOS/RadiOS.py > /tmp/radios.log
+#Type=oneshot
+ExecStart=/home/volumio/RadiOS/RadiOS.py > /tmp/radios.log 2>&1
+RestartSec=2s
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

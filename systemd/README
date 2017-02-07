@@ -1,1 +1,2 @@
-Copy service file to /etc/systemd/system/radios.service and run sudo systemctl enable radios.service
+* This file will be copied by the install script to /etc/systemd/system/radios.service
+* and this command will be run to activate it: sudo systemctl enable radios.service
