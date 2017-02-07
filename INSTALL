@@ -1,0 +1,4 @@
+* Install volumio.org on a Raspberry Pi
+* Checkout git repo in home dir
+* Run install.sh
+* Reboot

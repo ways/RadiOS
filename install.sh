@@ -22,4 +22,10 @@ cp my-web-radio /data/favourites/my-web-radio
 sudo cp systemd/radios.service /etc/systemd/system/
 sudo systemctl enable radios.service
 
-echo "Done. Please reboot."
+echo "Done. Please reboot.
+
+Suggested settings in volumio:
+
+* audio buffer: 2 MB
+* 
+"
