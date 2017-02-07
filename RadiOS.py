@@ -224,7 +224,7 @@ def PopulateTables ():   # Set up mapping from IO to function
      -1,  #4
       0,  #5
       0,  #6
-     30,  #7
+      0,  #7
       3,  #8
      -6,  #9
      -5,  #10
@@ -232,15 +232,15 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #12
       0,  #13
      40,  #14
-      8,  #15
+     30,  #15
       0,  #16
      -2,  #17
-     30,  #18
+     20,  #18
       0,  #19
       0,  #20
       0,  #21
      -4,  #22
-     20,  #23
+     15,  #23
       7,  #24
       5,  #25
       0,  #26 This pin seems to not work?
