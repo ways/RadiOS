@@ -26,6 +26,7 @@ echo "Done. Please reboot.
 
 Suggested settings in volumio:
 
-* audio buffer: 2 MB
-* 
+* Set output device to your usb soundcard.
+* audio buffer: small, i.e. 2 MB
+* check My Web Radios and replace with your favorites
 "
