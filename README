@@ -2,16 +2,17 @@
 
 A physical, attractive internet radio with a minimal interface.
 
+To build one, read BUILD file. To install read INSTALL file.
+
+
+
 === Software TODOs ===
 
 Medium:
-* Readd espeak.
 * Add spotify playlists as option.
 * Detect if unable to play stream, and talk about it.
-* Readd check for network name.
 * Split out hardware map file
 * Watch favorites-list and reload if changed?
-* Restart on crash
 
 Low:
 * Allow same-row connections.
