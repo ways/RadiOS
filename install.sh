@@ -21,3 +21,5 @@ cp my-web-radio /data/favourites/my-web-radio
 # Enable on startup
 sudo cp systemd/radios.service /etc/systemd/system/
 sudo systemctl enable radios.service
+
+echo "Done. Please reboot."
