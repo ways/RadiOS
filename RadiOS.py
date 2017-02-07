@@ -30,7 +30,7 @@ GPIO.setmode(GPIO.BCM)
 # Init wireless
 wireless = Wireless()
 
-configFile = '/data/favourites/my-web-radio'
+favoritesFile = '/data/favourites/my-web-radio'
 mpdhost = 'localhost'
 inethost = 'nrk.no' # For testing internet
 client = mpd.MPDClient () # Connection to mpd
@@ -46,6 +46,7 @@ prevVolume = 0
 muted = False
 ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
+startTime = time.time()
 
                      # User configurable
 useVoice  = True     # Announce channels
@@ -71,7 +72,7 @@ def ParseConfig ():
   try:
 
     # Read config file
-    with open(configFile) as data_file:    
+    with open(favoritesFile) as data_file:    
       config = json.load(data_file)
 
     if verbose:
@@ -86,8 +87,8 @@ def ParseConfig ():
       channelurls.append (channel['uri'])
 
   except IOError:
-    print "Error reading config file " + configFile
-    WriteLog ("Error reading config file " + configFile, True)
+    print "Error reading config file " + favoritesFile
+    WriteLog ("Error reading config file " + favoritesFile, True)
     sys.exit (1)
 
   if verbose:
@@ -207,6 +208,7 @@ def Speak (msg, client, volume=10):
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, _volume)
   if useVoice:
+    StopMPD (client)
     os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (_volume) + ' -s 170 --stdout "' \
       + msg + '" | /usr/bin/aplay -D plughw:5,0 --quiet')
 
@@ -353,6 +355,14 @@ def GetIP ():
   return ip
 
 
+def checkFavorites(c): # Check if favorites file has changed. If so complain and exit.
+  stamp = os.stat(favoritesFile).st_mtime
+  if stamp > startTime:
+    StopMPD (c)
+    WriteLog ('Favorites changed. I was started at ' + startTime + ' and ' + favoritesFile + ' changed at ' + stamp)
+    Speak ('Favorites changed, restarting.')
+    sys.exit(0)
+
 # Main
 
 channelNames, channelUrls = ParseConfig ()
@@ -374,14 +384,18 @@ try:
     if not Compare (client):
       PlayStream (ioVolume, ioChannel, client)
 
+    checkFavorites(client)
+
     time.sleep (0.2)
 
 except KeyboardInterrupt:
   print "Shutting down cleanly ... (Ctrl + C)"
 except socket.error:
   print "socket.error MPD stopped?"
+  sys.exit(1)
 except mpd.ConnectionError:
   print "mpd.ConnectionError: MPD stopped?"
+  sys.exit(1)
 
 finally:
   #DisconnectMPD (client)
