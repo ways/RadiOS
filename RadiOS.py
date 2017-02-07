@@ -209,7 +209,7 @@ def Speak (msg, client, volume=10):
   SetVolumeMPD (client, _volume)
   if useVoice:
     StopMPD (client)
-    os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (_volume) + ' -s 170 --stdout "' \
+    os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (_volume) + ' -s 200 --stdout "' \
       + msg + '" | /usr/bin/aplay -D plughw:5,0 --quiet')
 
 def PopulateTables ():   # Set up mapping from IO to function
