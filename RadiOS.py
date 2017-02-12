@@ -49,7 +49,7 @@ ioVolume = None      # Current volumes selected
 startTime = time.time()
 
                      # User configurable
-useVoice  = True     # Announce channels
+useVoice  = False    # Announce channels
 verbose   = False    # Development variables
 speakTime = False
 
@@ -207,10 +207,9 @@ def Speak (msg, client, volume=10):
   _volume = volume + 5
   WriteLog ('Saying . o O (' + msg + ')')
   SetVolumeMPD (client, _volume)
-  if useVoice:
-    StopMPD (client)
-    os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (_volume) + ' -s 200 --stdout "' \
-      + msg + '" | /usr/bin/aplay -D plughw:5,0 --quiet')
+  StopMPD (client)
+  os.system ('/usr/bin/espeak -v no -g 10 -p 1 -a ' + str (_volume) + ' -s 200 --stdout "' \
+    + msg + '" | /usr/bin/aplay -D plughw:5,0 --quiet')
 
 def PopulateTables ():   # Set up mapping from IO to function
 # BCN/GPIO number | function
@@ -374,10 +373,11 @@ try:
   ssid=FindSSID (client)
 
   if not TestConnection ():
-    Speak ("Kan ikke koble til nettverket " + ssid + ".", client)
+    Speak ("Kan ikke koble til nettverket.", client)
   else:
     StopMPD (client)
-    Speak ("Nettverk " + ssid + ".", client)
+    if useVoice:
+      Speak ("Nettverk " + ssid + ".", client)
 
   while True:
     ioVolume, ioChannel = ScanIO (ioList)

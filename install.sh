@@ -22,6 +22,9 @@ cp my-web-radio /data/favourites/my-web-radio
 sudo cp systemd/radios.service /etc/systemd/system/
 sudo systemctl enable radios.service
 
+# Disable wireless powersaving
+echo "wireless-power off" >> /etc/network/interfaces
+
 echo "Done. Please reboot.
 
 Suggested settings in volumio:
