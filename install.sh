@@ -23,7 +23,7 @@ sudo cp systemd/radios.service /etc/systemd/system/
 sudo systemctl enable radios.service
 
 # Disable wireless powersaving
-echo "wireless-power off" >> /etc/network/interfaces
+echo "wireless-power off" | sudo tee -a /etc/network/interfaces
 
 echo "Done. Please reboot.
 

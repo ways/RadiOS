@@ -4,6 +4,9 @@ Usable GPIO pins in BCM numbering ( see http://pinout.xyz/ ).
 * Do not use those with X, try to stay away from those with a question mark.
 * For no reason we use pins on the left for channels, right for volume.
 
+LED:
+* LED should be connected to ground and 13
+
 ---------------------
                      \
                   O  |
