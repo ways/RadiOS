@@ -18,7 +18,6 @@
 # Main part of RadiOP
 #
 # See install.sh for requirements
-#
 
 import time, syslog, io, sys, os, socket, mpd, json, RPi.GPIO as GPIO
 #urllib2, 
@@ -353,6 +352,9 @@ def TestConnection (inethost):
 def SetLED (ledPin, verbose = False):
   global ledSpeed
 
+  if 0 == ledPin:
+    return
+
   if nowPlaying:
     ledSpeed = 5
   else:
@@ -380,6 +382,9 @@ def checkFavorites(c): # Check if favorites file has changed. If so complain and
 
 
 def ledPWM (ledPin, verbose = False):
+  if 0 == ledPin:
+    return
+
   GPIO.setup(ledPin, GPIO.OUT)
   p = GPIO.PWM(ledPin, 50)  # channel=12 frequency=50Hz
   p.start(0)
