@@ -20,8 +20,10 @@
 # See install.sh for requirements
 #
 
-import time, syslog, io, sys, os, urllib2, socket, mpd, json, RPi.GPIO as GPIO
+import time, syslog, io, sys, os, socket, mpd, json, RPi.GPIO as GPIO
+#urllib2, 
 from wireless import Wireless
+from threading import Thread
 
 # Init GPIO
 GPIO.setwarnings(False)
@@ -32,7 +34,6 @@ wireless = Wireless()
 
 favoritesFile = '/data/favourites/my-web-radio'
 mpdhost = 'localhost'
-inethost = 'nrk.no' # For testing internet
 client = mpd.MPDClient () # Connection to mpd
 
 ioList = None        # Map GPIO to function
@@ -46,12 +47,8 @@ prevVolume = 0
 muted = False
 ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
-startTime = time.time()
-
-                     # User configurable
-useVoice  = False    # Announce channels
-verbose   = False    # Development variables
-speakTime = False
+startTime = time.time() # To compare my-favorites-file to
+ledSpeed = 0         # PWM speed
 
 
 def FindSSID (client):
@@ -63,7 +60,7 @@ def FindSSID (client):
     return 'kabel' # 'wired'
 
 
-def ParseConfig ():
+def ParseConfig (verbose):
   section = 'Channels'
   channelnames = ['noop']
   channelurls = ['noop']
@@ -230,7 +227,7 @@ def PopulateTables ():   # Set up mapping from IO to function
      -7,  #11
       0,  #12
       0,  #13
-     40,  #14
+     50,  #14
      30,  #15
       0,  #16
      -2,  #17
@@ -337,12 +334,31 @@ def ScanIO (ioList):
   return (ioVol, ioChan)
 
 
-def TestConnection ():
-  try:
-    response = urllib2.urlopen ('http://' + inethost, timeout=2)
+def TestConnection (inethost):
+  # http
+  #try:
+  #  response = urllib2.urlopen ('http://' + inethost, timeout=2)
+  #  return True
+  #except urllib2.URLError as err: pass
+  #return False
+
+  #ping
+  response = os.system("ping -c 1 " + inethost)
+  if response == 0:
     return True
-  except urllib2.URLError as err: pass
-  return False
+  else:
+    return False
+
+
+def SetLED (ledPin, verbose = False):
+  global ledSpeed
+
+  if nowPlaying:
+    ledSpeed = 5
+  else:
+    ledSpeed = 0
+  if verbose:
+    print "SetLED:", ledSpeed
 
 
 def GetIP ():
@@ -362,29 +378,82 @@ def checkFavorites(c): # Check if favorites file has changed. If so complain and
     Speak ('Favorites changed, restarting.')
     sys.exit(0)
 
+
+def ledPWM (ledPin, verbose = False):
+  GPIO.setup(ledPin, GPIO.OUT)
+  p = GPIO.PWM(ledPin, 50)  # channel=12 frequency=50Hz
+  p.start(0)
+ 
+  try: 
+    while 1:
+      if verbose:
+        print "ledPWM:", ledSpeed
+
+      if 0 == ledSpeed:
+        p.ChangeDutyCycle(0)
+        time.sleep(1)
+        continue
+
+      for dc in range(0, 101, ledSpeed):
+        if 0 == ledSpeed:
+          continue
+        p.ChangeDutyCycle(dc)
+        #print dc
+        time.sleep(0.1)
+      for dc in range(100, -1, -ledSpeed):
+        if 0 == ledSpeed:
+          continue
+        p.ChangeDutyCycle(dc)
+        time.sleep(0.1)
+  except KeyboardInterrupt:
+    pass
+  p.stop()
+
+
 # Main
 
-channelNames, channelUrls = ParseConfig ()
+# User configurable
+#speakTime = False
+useVoice  = False    # Announce channels
+verbose   = True     # Development variables
+ledPin    = 13       # Status LED
+inethost = 'uio.no' # For testing internet
+
+channelNames, channelUrls = ParseConfig (verbose)
 ioList = PopulateTables ()
 ConnectMPD (client)
 GPIO.setmode (GPIO.BCM) #Use GPIO numbers
 
+# Start background thread for status led
+background_thread = Thread(target=ledPWM, args=(ledPin,verbose,))
+background_thread.daemon = True
+background_thread.start()
+
+SetLED (ledPin, verbose)
+
 try:
   ssid=FindSSID (client)
 
-  if not TestConnection ():
+  if not TestConnection (inethost):
     Speak ("Kan ikke koble til nettverket.", client)
   else:
     StopMPD (client)
     if useVoice:
       Speak ("Nettverk " + ssid + ".", client)
 
+  count=0
   while True:
     ioVolume, ioChannel = ScanIO (ioList)
     if not Compare (client):
       PlayStream (ioVolume, ioChannel, client)
 
     checkFavorites(client)
+
+    # Update status led every x seconds
+    count += 1
+    if count > 20:
+      count = 0
+      SetLED (ledPin, verbose)
 
     time.sleep (0.2)
 
