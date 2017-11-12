@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2014-2017 Lars Falk-Petersen <dev@falkp.no>
 # This program is free software: you can redistribute it and/or modify
@@ -72,7 +72,7 @@ def ParseConfig (verbose):
       config = json.load(data_file)
 
     if verbose:
-      print "Read config file:"
+      print("Read config file:")
       from pprint import pprint
       pprint(config)
 
@@ -83,13 +83,13 @@ def ParseConfig (verbose):
       channelurls.append (channel['uri'])
 
   except IOError:
-    print "Error reading config file " + favoritesFile
+    print("Error reading config file " + favoritesFile)
     WriteLog ("Error reading config file " + favoritesFile, True)
     sys.exit (1)
 
   if verbose:
-    print 'channelnames', channelnames
-    print 'channelurls', channelurls
+    print('channelnames', channelnames)
+    print('channelurls', channelurls)
   else:
     WriteLog ( "Read channels from config: " + str (channelnames))
 
@@ -101,7 +101,7 @@ def WriteLog (msg, error = False):
   if error:
     severity = syslog.LOG_ERR
   if verbose:
-    print severity, msg
+    print(severity, msg)
   syslog.syslog (severity, msg)
 
 
@@ -165,10 +165,10 @@ def PlayMPD (c, volume, url):
     SetVolumeMPD (c, volume)
 
     mpdstatus = c.status()
-  except mpd.CommandError, e:
+  except mpd.CommandError as e:
     WriteLog ("PlayMPD: Error commanding mpd: " + str(e))
     return False
-  except mpd.ConnectionError, e:
+  except mpd.ConnectionError as e:
     WriteLog ("PlayMPD: Error connecting to MPD:" + str (e), True)
     return False
 
@@ -243,7 +243,7 @@ def PopulateTables ():   # Set up mapping from IO to function
   ]
 
   if verbose:
-    print ioList
+    print(ioList)
 
   return ioList
 
@@ -294,13 +294,13 @@ def ScanIO (ioList):
     if 0 > func and GPIO.input(pin):
       ioChan.append ( abs (func) )
       if verbose:
-        print "Found high pin", pin, "func", func, "while looking for channels"
+        print("Found high pin", pin, "func", func, "while looking for channels")
 
   # Channel sanity checks
   if 0 == len (ioChan):
     ioChan.append (0)
 #    if verbose:
-#      print "No channel set."
+#      print("No channel set.")
 
   # Now we turn it around
   # Set up for volume
@@ -323,13 +323,13 @@ def ScanIO (ioList):
     if 0 < func and GPIO.input(pin):
       ioVol.append (func)
       if verbose:
-        print "Found high pin", pin, "func", func, "while looking for volumes"
+        print("Found high pin", pin, "func", func, "while looking for volumes")
 
   # Volume sanity checks
   if 0 == len (ioVol):
     ioVol.append (0)
     if verbose:
-      print "No volume set"
+      print("No volume set")
   return (ioVol, ioChan)
 
 
@@ -360,7 +360,7 @@ def SetLED (ledPin, verbose = False):
   else:
     ledSpeed = 0
   if verbose:
-    print "SetLED:", ledSpeed
+    print("SetLED:", ledSpeed)
 
 
 def GetIP ():
@@ -392,7 +392,7 @@ def ledPWM (ledPin, verbose = False):
   try: 
     while 1:
       if verbose:
-        print "ledPWM:", ledSpeed
+        print("ledPWM:", ledSpeed)
 
       if 0 == ledSpeed:
         p.ChangeDutyCycle(0)
@@ -463,12 +463,12 @@ try:
     time.sleep (0.2)
 
 except KeyboardInterrupt:
-  print "Shutting down cleanly ... (Ctrl + C)"
+  print("Shutting down cleanly ... (Ctrl + C)")
 except socket.error:
-  print "socket.error MPD stopped?"
+  print("socket.error MPD stopped?")
   sys.exit(1)
 except mpd.ConnectionError:
-  print "mpd.ConnectionError: MPD stopped?"
+  print("mpd.ConnectionError: MPD stopped?")
   sys.exit(1)
 
 finally:
