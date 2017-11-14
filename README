@@ -12,7 +12,6 @@ Medium:
 * Add spotify playlists as option.
 * Detect if unable to play stream, and talk about it.
 * Split out hardware map file
-* Watch favorites-list and reload if changed?
 
 Low:
 * Allow same-row connections.
