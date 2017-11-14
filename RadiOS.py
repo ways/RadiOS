@@ -19,8 +19,7 @@
 #
 # See install.sh for requirements
 
-import time, syslog, io, sys, os, socket, mpd, json, RPi.GPIO as GPIO
-#urllib2, 
+import time, syslog, sys, os, mpd, json, RPi.GPIO as GPIO, socket
 from threading import Thread
 
 # Init GPIO
@@ -207,7 +206,7 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #5
       0,  #6
       0,  #7
-      3,  #8
+     35,  #8
      -6,  #9
      -5,  #10
      -7,  #11
@@ -222,9 +221,9 @@ def PopulateTables ():   # Set up mapping from IO to function
       0,  #20
       0,  #21
      -4,  #22
-     15,  #23
-      7,  #24
-      5,  #25
+     50,  #23
+     45,  #24
+     39,  #25
       0,  #26 This pin seems to not work?
      -3   #27
   ]
@@ -334,15 +333,6 @@ def SetLED (ledPin, verbose = False):
     print("SetLED:", ledSpeed)
 
 
-def GetIP ():
-  ip = 'unknown'
-  s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  s.connect ( (inethost,80) )
-  ip = s.getsockname()[0]
-  s.close()
-  return ip
-
-
 def checkFavorites(c): # Check if favorites file has changed. If so complain and exit.
   stamp = os.stat(favoritesFile).st_mtime
   if stamp > startTime:
@@ -391,7 +381,7 @@ def ledPWM (ledPin, verbose = False):
 # User configurable
 #speakTime = False
 useVoice  = False    # Announce channels
-verbose   = True     # Development variables
+verbose   = False     # Development variables
 ledPin    = 13       # Status LED
 inethost = 'uio.no' # For testing internet
 
@@ -407,11 +397,11 @@ background_thread.start()
 
 SetLED (ledPin, verbose)
 
-try:
-  StopMPD (client)
+StopMPD (client)
 
-  count=0
-  while True:
+count=0
+while True:
+  try:
     ioVolume, ioChannel = ScanIO (ioList)
     if not Compare (client):
       PlayStream (ioVolume, ioChannel, client)
@@ -426,16 +416,14 @@ try:
 
     time.sleep (0.2)
 
-except KeyboardInterrupt:
-  print("Shutting down cleanly ... (Ctrl + C)")
-except socket.error:
-  print("socket.error MPD stopped?")
-  sys.exit(1)
-except mpd.ConnectionError:
-  print("mpd.ConnectionError: MPD stopped?")
-  sys.exit(1)
-
-finally:
-  #DisconnectMPD (client)
-  GPIO.cleanup()
+  except KeyboardInterrupt:
+    print("Shutting down cleanly ... (Ctrl + C)")
+    sys.exit(0)
+  except socket.error:
+    print("socket.error MPD stopped?")
+    #sys.exit(1)
+  except mpd.ConnectionError:
+    print("mpd.ConnectionError: MPD stopped. Reconnecting.")
+    ConnectMPD (client)
+    #sys.exit(1)
 
