@@ -21,15 +21,11 @@
 
 import time, syslog, io, sys, os, socket, mpd, json, RPi.GPIO as GPIO
 #urllib2, 
-from wireless import Wireless
 from threading import Thread
 
 # Init GPIO
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
-
-# Init wireless
-wireless = Wireless()
 
 favoritesFile = '/data/favourites/my-web-radio'
 mpdhost = 'localhost'
@@ -48,15 +44,6 @@ ioChannel = None     # Current channels selected
 ioVolume = None      # Current volumes selected
 startTime = time.time() # To compare my-favorites-file to
 ledSpeed = 0         # PWM speed
-
-
-def FindSSID (client):
-  current = wireless.current()
-
-  if current:
-    return current
-  else:
-    return 'kabel' # 'wired'
 
 
 def ParseConfig (verbose):
@@ -333,22 +320,6 @@ def ScanIO (ioList):
   return (ioVol, ioChan)
 
 
-def TestConnection (inethost):
-  # http
-  #try:
-  #  response = urllib2.urlopen ('http://' + inethost, timeout=2)
-  #  return True
-  #except urllib2.URLError as err: pass
-  #return False
-
-  #ping
-  response = os.system("ping -c 1 " + inethost)
-  if response == 0:
-    return True
-  else:
-    return False
-
-
 def SetLED (ledPin, verbose = False):
   global ledSpeed
 
@@ -437,14 +408,7 @@ background_thread.start()
 SetLED (ledPin, verbose)
 
 try:
-  ssid=FindSSID (client)
-
-  if not TestConnection (inethost):
-    Speak ("Kan ikke koble til nettverket.", client)
-  else:
-    StopMPD (client)
-    if useVoice:
-      Speak ("Nettverk " + ssid + ".", client)
+  StopMPD (client)
 
   count=0
   while True:

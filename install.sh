@@ -12,6 +12,11 @@ sudo apt update
 sudo apt-get install -f python-pip python-dev vim-nox screen espeak
 sudo pip install python-mpd2 RPi.GPIO wireless
 
+# python3
+#sudo apt update
+#sudo apt-get install -f python3-pip python3-dev python3-rpi.gpio vim-nox screen
+#sudo pip3 install --upgrade setuptools python-mpd2
+
 # Set up access to gpio for user (see also root crontab)
 sudo adduser volumio gpio
 
